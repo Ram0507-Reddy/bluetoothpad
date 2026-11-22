@@ -1,0 +1,26 @@
+# Android
+.gradle/
+**/build/
+app/build/
+*.iml
+.idea/
+local.properties
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+icons_cache/
+
+# Debug files
+dump.xml
+*_dump.xml
+ui_*.xml

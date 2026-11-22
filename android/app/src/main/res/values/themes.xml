@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.BluetoothRemote" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/text_white</item>
+        <item name="colorSecondary">@color/surface_elevated</item>
+        <item name="android:windowBackground">@color/bg_black</item>
+        <item name="android:statusBarColor">@color/bg_black</item>
+        <item name="android:navigationBarColor">@color/bg_black</item>
+    </style>
+</resources>

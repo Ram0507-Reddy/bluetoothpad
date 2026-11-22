@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Monochromatic Black and White Palette -->
+    <color name="bg_black">#080808</color>
+    <color name="surface_card">#121212</color>
+    <color name="surface_elevated">#1A1A1A</color>
+    <color name="surface_border">#262626</color>
+    <color name="surface_pressed">#2C2C2C</color>
+    
+    <color name="text_white">#F5F5F7</color>
+    <color name="text_muted">#8A8A8E</color>
+    <color name="text_dim">#525257</color>
+    
+    <color name="touchpad_surface">#0D0D0E</color>
+    <color name="touchpad_border">#222225</color>
+    
+    <color name="status_green">#22C55E</color>
+    <color name="status_red">#EF4444</color>
+    <color name="border_dark">#262626</color>
+    <color name="border_light">#D1D1D6</color>
+</resources>
