@@ -130,6 +130,13 @@ public class MainActivity extends AppCompatActivity {
     private int maxPointersInGesture = 1;
     private float initialPinchDistance = 0f;
     private float lastScrollY = 0f;
+    private float scrollAccumulator = 0f;
+    private float dedicatedScrollAccum = 0f;
+    private float multiTouchFocusStartX = 0f;
+    private float multiTouchFocusStartY = 0f;
+    private float lastMultiTouchFocusY = 0f;
+    private boolean gestureMoved = false;
+    private boolean gestureTriggered = false;
     private static final float TOUCH_SENSITIVITY = 1.9f;
 
     @Override
@@ -283,7 +290,8 @@ public class MainActivity extends AppCompatActivity {
                     setAndroidClipboard(text);
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void requestAppList() {
@@ -291,7 +299,8 @@ public class MainActivity extends AppCompatActivity {
             JSONObject obj = new JSONObject();
             obj.put("t", "get_apps");
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void applyTheme() {
@@ -306,34 +315,41 @@ public class MainActivity extends AppCompatActivity {
         int touchBorder = isDarkMode ? Color.parseColor("#222225") : Color.parseColor("#C7C7CC");
         int scrollBg = isDarkMode ? Color.parseColor("#18181B") : Color.parseColor("#DCDCE0");
 
-        if (rootLayout != null) rootLayout.setBackgroundColor(bg);
-        if (headerCard != null) headerCard.setBackground(createBoxDrawable(cardBg, border, 10));
+        if (rootLayout != null)
+            rootLayout.setBackgroundColor(bg);
+        if (headerCard != null)
+            headerCard.setBackground(createBoxDrawable(cardBg, border, 10));
 
-        if (tvStatus != null) tvStatus.setTextColor(textPri);
-        if (tvTouchpadHint != null) tvTouchpadHint.setTextColor(textSec);
-        if (tvEmptyApps != null) tvEmptyApps.setTextColor(textSec);
+        if (tvStatus != null)
+            tvStatus.setTextColor(textPri);
+        if (tvTouchpadHint != null)
+            tvTouchpadHint.setTextColor(textSec);
+        if (tvEmptyApps != null)
+            tvEmptyApps.setTextColor(textSec);
 
-        if (touchpadSurface != null) touchpadSurface.setBackground(createBoxDrawable(touchBg, touchBorder, 12));
-        if (scrollSurface != null) scrollSurface.setBackground(createBoxDrawable(scrollBg, border, 12));
+        if (touchpadSurface != null)
+            touchpadSurface.setBackground(createBoxDrawable(touchBg, touchBorder, 12));
+        if (scrollSurface != null)
+            scrollSurface.setBackground(createBoxDrawable(scrollBg, border, 12));
 
         applyButtonTheme(btnThemeToggle, false);
         applyButtonTheme(btnLeftClick, false);
         applyButtonTheme(btnRightClick, false);
 
         int[] regularBtnIds = {
-            R.id.btnVolUp, R.id.btnVolDown, R.id.btnMute, R.id.btnPrev, R.id.btnNext,
-            R.id.btnSlidePrev, R.id.btnSlideNext, R.id.btnF5, R.id.btnEsc,
-            R.id.btnUnlock, R.id.btnAirMouse, R.id.btnSetPin, R.id.btnScreenOff,
-            R.id.btnCopyFromPc, R.id.btnPasteToPc, R.id.btnSnip, R.id.btnMicMute, R.id.btnTaskMgr,
-            R.id.btnSleep, R.id.btnRestart, R.id.btnShutdown,
-            R.id.btnLock, R.id.btnDesktop, R.id.btnAltTab, R.id.btnTaskView,
-            R.id.btnSearch, R.id.btnActionCenter, R.id.btnVDeskLeft, R.id.btnVDeskRight,
-            R.id.btnLaunchTerminal, R.id.btnLaunchExplorer,
-            R.id.btnCopy, R.id.btnPaste, R.id.btnUndo,
-            R.id.btnKeyEnter, R.id.btnKeyBackspace, R.id.btnKeySpace, R.id.btnKeyEsc,
-            R.id.btnKeyTab, R.id.btnKeyWin, R.id.btnKeyDel,
-            R.id.btnKeyUp, R.id.btnKeyDown, R.id.btnKeyLeft, R.id.btnKeyRight,
-            R.id.btnRefreshApps
+                R.id.btnVolUp, R.id.btnVolDown, R.id.btnMute, R.id.btnPrev, R.id.btnNext,
+                R.id.btnSlidePrev, R.id.btnSlideNext, R.id.btnF5, R.id.btnEsc,
+                R.id.btnUnlock, R.id.btnAirMouse, R.id.btnSetPin, R.id.btnScreenOff,
+                R.id.btnCopyFromPc, R.id.btnPasteToPc, R.id.btnSnip, R.id.btnMicMute, R.id.btnTaskMgr,
+                R.id.btnSleep, R.id.btnRestart, R.id.btnShutdown,
+                R.id.btnLock, R.id.btnDesktop, R.id.btnAltTab, R.id.btnTaskView,
+                R.id.btnSearch, R.id.btnActionCenter, R.id.btnVDeskLeft, R.id.btnVDeskRight,
+                R.id.btnLaunchTerminal, R.id.btnLaunchExplorer,
+                R.id.btnCopy, R.id.btnPaste, R.id.btnUndo,
+                R.id.btnKeyEnter, R.id.btnKeyBackspace, R.id.btnKeySpace, R.id.btnKeyEsc,
+                R.id.btnKeyTab, R.id.btnKeyWin, R.id.btnKeyDel,
+                R.id.btnKeyUp, R.id.btnKeyDown, R.id.btnKeyLeft, R.id.btnKeyRight,
+                R.id.btnRefreshApps
         };
 
         for (int id : regularBtnIds) {
@@ -344,13 +360,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         Button btnPlay = findViewById(R.id.btnPlayPause);
-        if (btnPlay != null) applyButtonTheme(btnPlay, true);
+        if (btnPlay != null)
+            applyButtonTheme(btnPlay, true);
 
         Button btnUnlock = findViewById(R.id.btnUnlock);
-        if (btnUnlock != null) applyButtonTheme(btnUnlock, true);
+        if (btnUnlock != null)
+            applyButtonTheme(btnUnlock, true);
 
-        if (btnSendText != null) applyButtonTheme(btnSendText, true);
-        if (btnOpenPhoneKeypad != null) applyButtonTheme(btnOpenPhoneKeypad, true);
+        if (btnSendText != null)
+            applyButtonTheme(btnSendText, true);
+        if (btnOpenPhoneKeypad != null)
+            applyButtonTheme(btnOpenPhoneKeypad, true);
 
         if (etTextInput != null) {
             etTextInput.setBackground(createBoxDrawable(cardBg, border, 8));
@@ -365,26 +385,32 @@ public class MainActivity extends AppCompatActivity {
         }
 
         int[] labelIds = {
-            R.id.tvSectionVol, R.id.tvSectionPlayback, R.id.tvSectionPres
+                R.id.tvSectionVol, R.id.tvSectionPlayback, R.id.tvSectionPres
         };
         for (int id : labelIds) {
             TextView tv = findViewById(id);
-            if (tv != null) tv.setTextColor(textSec);
+            if (tv != null)
+                tv.setTextColor(textSec);
         }
 
         View c1 = findViewById(R.id.cardMediaCol1);
         View c2 = findViewById(R.id.cardMediaCol2);
         View c3 = findViewById(R.id.cardMediaCol3);
-        if (c1 != null) c1.setBackground(createBoxDrawable(cardBg, border, 10));
-        if (c2 != null) c2.setBackground(createBoxDrawable(cardBg, border, 10));
-        if (c3 != null) c3.setBackground(createBoxDrawable(cardBg, border, 10));
+        if (c1 != null)
+            c1.setBackground(createBoxDrawable(cardBg, border, 10));
+        if (c2 != null)
+            c2.setBackground(createBoxDrawable(cardBg, border, 10));
+        if (c3 != null)
+            c3.setBackground(createBoxDrawable(cardBg, border, 10));
 
-        if (appsAdapter != null) appsAdapter.notifyDataSetChanged();
+        if (appsAdapter != null)
+            appsAdapter.notifyDataSetChanged();
         switchTab(currentTabId);
     }
 
     private void applyButtonTheme(Button btn, boolean isProminent) {
-        if (btn == null) return;
+        if (btn == null)
+            return;
         int btnBg, btnText, btnBorder;
 
         if (isProminent) {
@@ -402,7 +428,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateStatusUI() {
-        if (tvStatus == null || btnConnect == null) return;
+        if (tvStatus == null || btnConnect == null)
+            return;
 
         if (btManager.isConnected()) {
             statusIndicator.setBackground(createDotDrawable(Color.parseColor("#22C55E")));
@@ -423,10 +450,12 @@ public class MainActivity extends AppCompatActivity {
             btnConnect.setBackground(createBoxDrawable(connBg, connBg, 8));
             btnConnect.setTextColor(connText);
 
-            if (tvTelemetry != null) tvTelemetry.setVisibility(View.GONE);
+            if (tvTelemetry != null)
+                tvTelemetry.setVisibility(View.GONE);
             if (isAirMouseActive) {
                 isAirMouseActive = false;
-                if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
+                if (sensorManager != null)
+                    sensorManager.unregisterListener(gyroListener);
                 if (btnAirMouse != null) {
                     btnAirMouse.setText("AIR MOUSE");
                     applyButtonTheme(btnAirMouse, false);
@@ -488,7 +517,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyTabStyle(Button btn, boolean active) {
-        if (btn == null) return;
+        if (btn == null)
+            return;
         int activeBg = isDarkMode ? Color.parseColor("#FFFFFF") : Color.parseColor("#000000");
         int activeText = isDarkMode ? Color.parseColor("#000000") : Color.parseColor("#FFFFFF");
 
@@ -517,28 +547,51 @@ public class MainActivity extends AppCompatActivity {
 
             switch (action) {
                 case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_DOWN: {
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                    if (imm != null)
+                        imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
                     startX = event.getX(0);
                     startY = event.getY(0);
                     lastX = startX;
                     lastY = startY;
                     mouseAccumX = 0f;
                     mouseAccumY = 0f;
+                    scrollAccumulator = 0f;
                     touchStartTime = System.currentTimeMillis();
                     maxPointersInGesture = 1;
+                    gestureMoved = false;
+                    gestureTriggered = false;
                     break;
+                }
 
                 case MotionEvent.ACTION_POINTER_DOWN:
                     if (event.getPointerCount() == 2) {
+                case MotionEvent.ACTION_POINTER_DOWN: {
+                    int count = event.getPointerCount();
+                    if (count > maxPointersInGesture) maxPointersInGesture = count;
+
+                    float sumX = 0f, sumY = 0f;
+                    for (int i = 0; i < count; i++) {
+                        sumX += event.getX(i);
+                        sumY += event.getY(i);
+                    }
+                    multiTouchFocusStartX = sumX / count;
+                    multiTouchFocusStartY = sumY / count;
+                    lastMultiTouchFocusY = multiTouchFocusStartY;
+                    scrollAccumulator = 0f;
+
+                    if (count == 2) {
                         float dxPinch = event.getX(0) - event.getX(1);
                         float dyPinch = event.getY(0) - event.getY(1);
                         initialPinchDistance = (float) Math.hypot(dxPinch, dyPinch);
                         lastScrollY = (event.getY(0) + event.getY(1)) / 2f;
                     }
                     break;
+                }
 
                 case MotionEvent.ACTION_MOVE:
+                case MotionEvent.ACTION_MOVE: {
                     if (pointerCount == 1) {
                         float curX = event.getX(0);
                         float curY = event.getY(0);
@@ -546,6 +599,18 @@ public class MainActivity extends AppCompatActivity {
                         mouseAccumY += (curY - lastY) * TOUCH_SENSITIVITY;
                         lastX = curX;
                         lastY = curY;
+                        if (maxPointersInGesture == 1) {
+                            float curX = event.getX(0);
+                            float curY = event.getY(0);
+                            float dx = curX - lastX;
+                            float dy = curY - lastY;
+                            if (Math.hypot(curX - startX, curY - startY) > 12f) {
+                                gestureMoved = true;
+                            }
+                            mouseAccumX += dx * TOUCH_SENSITIVITY;
+                            mouseAccumY += dy * TOUCH_SENSITIVITY;
+                            lastX = curX;
+                            lastY = curY;
 
                         int moveX = (int) mouseAccumX;
                         int moveY = (int) mouseAccumY;
@@ -553,6 +618,13 @@ public class MainActivity extends AppCompatActivity {
                             mouseAccumX -= moveX;
                             mouseAccumY -= moveY;
                             sendMouseMove(moveX, moveY);
+                            int moveX = (int) mouseAccumX;
+                            int moveY = (int) mouseAccumY;
+                            if (moveX != 0 || moveY != 0) {
+                                mouseAccumX -= moveX;
+                                mouseAccumY -= moveY;
+                                sendMouseMove(moveX, moveY);
+                            }
                         }
                     } else if (pointerCount == 2) {
                         float curPinchX = event.getX(0) - event.getX(1);
@@ -561,6 +633,8 @@ public class MainActivity extends AppCompatActivity {
                         float pinchDelta = currentPinchDist - initialPinchDistance;
 
                         if (Math.abs(pinchDelta) > 120f) {
+                        if (Math.abs(pinchDelta) > 110f) {
+                            gestureMoved = true;
                             if (pinchDelta > 0) {
                                 sendAction("zoom_in");
                             } else {
@@ -573,22 +647,131 @@ public class MainActivity extends AppCompatActivity {
                             if (Math.abs(dyScroll) > 4f) {
                                 sendScroll((int) (-dyScroll * 3.5f));
                                 lastScrollY = avgY;
+                            float dyScroll = avgY - lastMultiTouchFocusY;
+                            lastMultiTouchFocusY = avgY;
+                            if (Math.abs(avgY - multiTouchFocusStartY) > 10f) {
+                                gestureMoved = true;
+                            }
+                            scrollAccumulator += dyScroll;
+                            if (Math.abs(scrollAccumulator) >= 10f) {
+                                int steps = (int) (scrollAccumulator / 10f);
+                                sendScroll(steps * -120);
+                                scrollAccumulator -= steps * 10f;
+                            }
+                        }
+                    } else if (pointerCount == 3) {
+                        float curX = (event.getX(0) + event.getX(1) + event.getX(2)) / 3f;
+                        float curY = (event.getY(0) + event.getY(1) + event.getY(2)) / 3f;
+                        float deltaX = curX - multiTouchFocusStartX;
+                        float deltaY = curY - multiTouchFocusStartY;
+
+                        if (Math.hypot(deltaX, deltaY) > 20f) {
+                            gestureMoved = true;
+                        }
+
+                        if (!gestureTriggered) {
+                            float threshold = 85f;
+                            if (deltaY < -threshold && Math.abs(deltaY) > Math.abs(deltaX)) {
+                                sendAction("taskview"); // Swipe UP -> Task View
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "3-Finger: Task View", Toast.LENGTH_SHORT).show();
+                            } else if (deltaY > threshold && Math.abs(deltaY) > Math.abs(deltaX)) {
+                                sendAction("desktop"); // Swipe DOWN -> Show Desktop
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "3-Finger: Desktop", Toast.LENGTH_SHORT).show();
+                            } else if (deltaX < -threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                                sendAction("app_next"); // Swipe LEFT -> Alt+Tab
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "3-Finger: Next App", Toast.LENGTH_SHORT).show();
+                            } else if (deltaX > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                                sendAction("app_prev"); // Swipe RIGHT -> Prev App
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "3-Finger: Prev App", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } else if (pointerCount >= 4) {
+                        float sumX = 0f, sumY = 0f;
+                        for (int i = 0; i < pointerCount; i++) {
+                            sumX += event.getX(i);
+                            sumY += event.getY(i);
+                        }
+                        float curX = sumX / pointerCount;
+                        float curY = sumY / pointerCount;
+                        float deltaX = curX - multiTouchFocusStartX;
+                        float deltaY = curY - multiTouchFocusStartY;
+
+                        if (Math.hypot(deltaX, deltaY) > 20f) {
+                            gestureMoved = true;
+                        }
+
+                        if (!gestureTriggered) {
+                            float threshold = 85f;
+                            if (deltaX < -threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                                sendAction("vdesk_right"); // Swipe LEFT -> Desktop Right
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "4-Finger: Next Desktop", Toast.LENGTH_SHORT).show();
+                            } else if (deltaX > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+                                sendAction("vdesk_left"); // Swipe RIGHT -> Desktop Left
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "4-Finger: Prev Desktop", Toast.LENGTH_SHORT).show();
+                            } else if (deltaY < -threshold && Math.abs(deltaY) > Math.abs(deltaX)) {
+                                sendAction("win_max"); // Swipe UP -> Maximize
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "4-Finger: Maximize", Toast.LENGTH_SHORT).show();
+                            } else if (deltaY > threshold && Math.abs(deltaY) > Math.abs(deltaX)) {
+                                sendAction("win_min"); // Swipe DOWN -> Minimize
+                                vibrate(30);
+                                gestureTriggered = true;
+                                Toast.makeText(MainActivity.this, "4-Finger: Minimize", Toast.LENGTH_SHORT).show();
                             }
                         }
                     }
                     break;
+                }
 
                 case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_POINTER_UP: {
                     long duration = System.currentTimeMillis() - touchStartTime;
                     float endX = event.getX(0);
                     float endY = event.getY(0);
                     float totalDist = (float) Math.hypot(endX - startX, endY - startY);
                     float totalDx = endX - startX;
                     float totalDy = endY - startY;
+                    if (!gestureMoved && !gestureTriggered && duration < 350) {
+                        if (maxPointersInGesture == 2) {
+                            sendClick("r"); // 2-finger tap -> Right Click
+                            vibrate(25);
+                            gestureTriggered = true;
+                            Toast.makeText(MainActivity.this, "2-Finger: Right Click", Toast.LENGTH_SHORT).show();
+                        } else if (maxPointersInGesture == 3) {
+                            sendAction("search"); // 3-finger tap -> Search
+                            vibrate(30);
+                            gestureTriggered = true;
+                            Toast.makeText(MainActivity.this, "3-Finger: Search", Toast.LENGTH_SHORT).show();
+                        } else if (maxPointersInGesture >= 4) {
+                            sendAction("action_center"); // 4-finger tap -> Action Center
+                            vibrate(35);
+                            gestureTriggered = true;
+                            Toast.makeText(MainActivity.this, "4-Finger: Action Center", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    break;
+                }
 
                     if (maxPointersInGesture == 1) {
                         // 1-Finger Tap / Double-tap
                         if (duration < 240 && totalDist < 25f) {
+                case MotionEvent.ACTION_UP: {
+                    long duration = System.currentTimeMillis() - touchStartTime;
+                    if (!gestureTriggered && !gestureMoved && duration < 350) {
+                        if (maxPointersInGesture == 1) {
                             long now = System.currentTimeMillis();
                             if (now - lastTapTime < 280) {
                                 sendClick("d");
@@ -602,18 +785,21 @@ public class MainActivity extends AppCompatActivity {
                     } else if (maxPointersInGesture == 2) {
                         // 2-Finger Tap -> Right Click
                         if (duration < 280 && totalDist < 35f) {
+                        } else if (maxPointersInGesture == 2) {
                             sendClick("r");
                             vibrate(25);
                         }
                     } else if (maxPointersInGesture == 3) {
                         // 3-Finger Tap: Search
                         if (duration < 280 && totalDist < 35f) {
+                            Toast.makeText(MainActivity.this, "2-Finger: Right Click", Toast.LENGTH_SHORT).show();
+                        } else if (maxPointersInGesture == 3) {
                             sendAction("search");
                         } else if (Math.abs(totalDy) > Math.abs(totalDx) && Math.abs(totalDy) > 160f) {
                             if (totalDy < 0) {
                                 sendAction("taskview"); // Swipe UP
                             } else {
-                                sendAction("desktop");  // Swipe DOWN
+                                sendAction("desktop"); // Swipe DOWN
                             }
                         } else if (Math.abs(totalDx) > 160f) {
                             if (totalDx < 0) {
@@ -625,6 +811,9 @@ public class MainActivity extends AppCompatActivity {
                     } else if (maxPointersInGesture >= 4) {
                         // 4-Finger Tap: Action Center
                         if (duration < 280 && totalDist < 35f) {
+                            vibrate(30);
+                            Toast.makeText(MainActivity.this, "3-Finger: Search", Toast.LENGTH_SHORT).show();
+                        } else if (maxPointersInGesture >= 4) {
                             sendAction("action_center");
                         } else if (Math.abs(totalDx) > Math.abs(totalDy) && Math.abs(totalDx) > 160f) {
                             if (totalDx < 0) {
@@ -638,15 +827,24 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 sendAction("win_min");
                             }
+                            vibrate(35);
+                            Toast.makeText(MainActivity.this, "4-Finger: Action Center", Toast.LENGTH_SHORT).show();
                         }
                     }
 
                     maxPointersInGesture = 1;
+                    gestureTriggered = false;
+                    gestureMoved = false;
                     break;
+                }
 
                 case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_CANCEL: {
                     maxPointersInGesture = 1;
+                    gestureTriggered = false;
+                    gestureMoved = false;
                     break;
+                }
             }
             return true;
         });
@@ -657,12 +855,19 @@ public class MainActivity extends AppCompatActivity {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     lastScrollY = y;
+                    dedicatedScrollAccum = 0f;
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float dy = y - lastScrollY;
                     if (Math.abs(dy) > 2) {
                         sendScroll((int) (-dy * 4.5f));
                         lastScrollY = y;
+                    lastScrollY = y;
+                    dedicatedScrollAccum += dy;
+                    if (Math.abs(dedicatedScrollAccum) >= 8f) {
+                        int steps = (int) (dedicatedScrollAccum / 8f);
+                        sendScroll(steps * -120);
+                        dedicatedScrollAccum -= steps * 8f;
                     }
                     break;
             }
@@ -723,80 +928,104 @@ public class MainActivity extends AppCompatActivity {
     private void setupShortcuts() {
         // Biometric & Security
         View bUnlock = findViewById(R.id.btnUnlock);
-        if (bUnlock != null) bUnlock.setOnClickListener(v -> triggerBiometricUnlock());
+        if (bUnlock != null)
+            bUnlock.setOnClickListener(v -> triggerBiometricUnlock());
 
         View bSetPin = findViewById(R.id.btnSetPin);
-        if (bSetPin != null) bSetPin.setOnClickListener(v -> promptSetPin());
+        if (bSetPin != null)
+            bSetPin.setOnClickListener(v -> promptSetPin());
 
         View bScreenOff = findViewById(R.id.btnScreenOff);
-        if (bScreenOff != null) bScreenOff.setOnClickListener(v -> sendAction("screen_off"));
+        if (bScreenOff != null)
+            bScreenOff.setOnClickListener(v -> sendAction("screen_off"));
 
         View bLock = findViewById(R.id.btnLock);
-        if (bLock != null) bLock.setOnClickListener(v -> sendAction("lock"));
+        if (bLock != null)
+            bLock.setOnClickListener(v -> sendAction("lock"));
 
         // Universal Clipboard
         View bCopyPc = findViewById(R.id.btnCopyFromPc);
-        if (bCopyPc != null) bCopyPc.setOnClickListener(v -> copyFromPc());
+        if (bCopyPc != null)
+            bCopyPc.setOnClickListener(v -> copyFromPc());
 
         View bPastePc = findViewById(R.id.btnPasteToPc);
-        if (bPastePc != null) bPastePc.setOnClickListener(v -> pasteToPc());
+        if (bPastePc != null)
+            bPastePc.setOnClickListener(v -> pasteToPc());
 
         View bCopy = findViewById(R.id.btnCopy);
-        if (bCopy != null) bCopy.setOnClickListener(v -> sendAction("copy"));
+        if (bCopy != null)
+            bCopy.setOnClickListener(v -> sendAction("copy"));
 
         View bPaste = findViewById(R.id.btnPaste);
-        if (bPaste != null) bPaste.setOnClickListener(v -> sendAction("paste"));
+        if (bPaste != null)
+            bPaste.setOnClickListener(v -> sendAction("paste"));
 
         // Productivity
         View bSnip = findViewById(R.id.btnSnip);
-        if (bSnip != null) bSnip.setOnClickListener(v -> sendAction("snip"));
+        if (bSnip != null)
+            bSnip.setOnClickListener(v -> sendAction("snip"));
 
         View bMic = findViewById(R.id.btnMicMute);
-        if (bMic != null) bMic.setOnClickListener(v -> sendAction("mic_mute"));
+        if (bMic != null)
+            bMic.setOnClickListener(v -> sendAction("mic_mute"));
 
         View bTaskMgr = findViewById(R.id.btnTaskMgr);
-        if (bTaskMgr != null) bTaskMgr.setOnClickListener(v -> sendAction("task_mgr"));
+        if (bTaskMgr != null)
+            bTaskMgr.setOnClickListener(v -> sendAction("task_mgr"));
 
         View bSearch = findViewById(R.id.btnSearch);
-        if (bSearch != null) bSearch.setOnClickListener(v -> sendAction("search"));
+        if (bSearch != null)
+            bSearch.setOnClickListener(v -> sendAction("search"));
 
         // Windows Navigation
         View bDesk = findViewById(R.id.btnDesktop);
-        if (bDesk != null) bDesk.setOnClickListener(v -> sendAction("desktop"));
+        if (bDesk != null)
+            bDesk.setOnClickListener(v -> sendAction("desktop"));
 
         View bAltTab = findViewById(R.id.btnAltTab);
-        if (bAltTab != null) bAltTab.setOnClickListener(v -> sendAction("alttab"));
+        if (bAltTab != null)
+            bAltTab.setOnClickListener(v -> sendAction("alttab"));
 
         View bTasks = findViewById(R.id.btnTaskView);
-        if (bTasks != null) bTasks.setOnClickListener(v -> sendAction("taskview"));
+        if (bTasks != null)
+            bTasks.setOnClickListener(v -> sendAction("taskview"));
 
         View bAction = findViewById(R.id.btnActionCenter);
-        if (bAction != null) bAction.setOnClickListener(v -> sendAction("action_center"));
+        if (bAction != null)
+            bAction.setOnClickListener(v -> sendAction("action_center"));
 
         View bTerm = findViewById(R.id.btnLaunchTerminal);
-        if (bTerm != null) bTerm.setOnClickListener(v -> sendAction("terminal"));
+        if (bTerm != null)
+            bTerm.setOnClickListener(v -> sendAction("terminal"));
 
         View bExp = findViewById(R.id.btnLaunchExplorer);
-        if (bExp != null) bExp.setOnClickListener(v -> sendAction("explorer"));
+        if (bExp != null)
+            bExp.setOnClickListener(v -> sendAction("explorer"));
 
         View bDeskL = findViewById(R.id.btnVDeskLeft);
-        if (bDeskL != null) bDeskL.setOnClickListener(v -> sendAction("vdesk_left"));
+        if (bDeskL != null)
+            bDeskL.setOnClickListener(v -> sendAction("vdesk_left"));
 
         View bDeskR = findViewById(R.id.btnVDeskRight);
-        if (bDeskR != null) bDeskR.setOnClickListener(v -> sendAction("vdesk_right"));
+        if (bDeskR != null)
+            bDeskR.setOnClickListener(v -> sendAction("vdesk_right"));
 
         // Power Deck
         View bSleep = findViewById(R.id.btnSleep);
-        if (bSleep != null) bSleep.setOnClickListener(v -> confirmPowerAction("Sleep Laptop", "sleep"));
+        if (bSleep != null)
+            bSleep.setOnClickListener(v -> confirmPowerAction("Sleep Laptop", "sleep"));
 
         View bRestart = findViewById(R.id.btnRestart);
-        if (bRestart != null) bRestart.setOnClickListener(v -> confirmPowerAction("Restart Laptop", "restart"));
+        if (bRestart != null)
+            bRestart.setOnClickListener(v -> confirmPowerAction("Restart Laptop", "restart"));
 
         View bShutdown = findViewById(R.id.btnShutdown);
-        if (bShutdown != null) bShutdown.setOnClickListener(v -> confirmPowerAction("Shutdown Laptop", "shutdown"));
+        if (bShutdown != null)
+            bShutdown.setOnClickListener(v -> confirmPowerAction("Shutdown Laptop", "shutdown"));
 
         View bUndo = findViewById(R.id.btnUndo);
-        if (bUndo != null) bUndo.setOnClickListener(v -> sendAction("undo"));
+        if (bUndo != null)
+            bUndo.setOnClickListener(v -> sendAction("undo"));
     }
 
     private void setupAppLauncher() {
@@ -850,7 +1079,8 @@ public class MainActivity extends AppCompatActivity {
 
         etAppSearch.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -858,7 +1088,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         btnRefreshApps.setOnClickListener(v -> {
@@ -890,12 +1121,14 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "launch");
             obj.put("app", appName);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void loadLogoAsync(String appName) {
         String slug = getAppSlug(appName);
-        if (slug == null) return;
+        if (slug == null)
+            return;
         try {
             URL url = new URL("https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/" + slug + ".png");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -914,36 +1147,62 @@ public class MainActivity extends AppCompatActivity {
                     });
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private String getAppSlug(String name) {
         String n = name.toLowerCase();
-        if (n.contains("chrome")) return "chrome";
-        if (n.contains("brave")) return "brave";
-        if (n.contains("edge")) return "microsoft-edge";
-        if (n.contains("firefox")) return "firefox";
-        if (n.contains("code") || n.contains("visual studio")) return "visual-studio-code";
-        if (n.contains("spotify")) return "spotify";
-        if (n.contains("discord")) return "discord";
-        if (n.contains("steam")) return "steam";
-        if (n.contains("notepad")) return "notepad";
-        if (n.contains("calc")) return "calculator";
-        if (n.contains("explorer")) return "windows-explorer";
-        if (n.contains("terminal")) return "windows-terminal";
-        if (n.contains("cmd") || n.contains("command prompt")) return "terminal";
-        if (n.contains("powershell")) return "powershell";
-        if (n.contains("vlc")) return "vlc";
-        if (n.contains("git")) return "git";
-        if (n.contains("github")) return "github";
-        if (n.contains("whatsapp")) return "whatsapp";
-        if (n.contains("telegram")) return "telegram";
-        if (n.contains("maltego")) return "maltego";
-        if (n.contains("obs")) return "obs";
-        if (n.contains("postman")) return "postman";
-        if (n.contains("word")) return "microsoft-word";
-        if (n.contains("excel")) return "microsoft-excel";
-        if (n.contains("powerpoint")) return "microsoft-powerpoint";
+        if (n.contains("chrome"))
+            return "chrome";
+        if (n.contains("brave"))
+            return "brave";
+        if (n.contains("edge"))
+            return "microsoft-edge";
+        if (n.contains("firefox"))
+            return "firefox";
+        if (n.contains("code") || n.contains("visual studio"))
+            return "visual-studio-code";
+        if (n.contains("spotify"))
+            return "spotify";
+        if (n.contains("discord"))
+            return "discord";
+        if (n.contains("steam"))
+            return "steam";
+        if (n.contains("notepad"))
+            return "notepad";
+        if (n.contains("calc"))
+            return "calculator";
+        if (n.contains("explorer"))
+            return "windows-explorer";
+        if (n.contains("terminal"))
+            return "windows-terminal";
+        if (n.contains("cmd") || n.contains("command prompt"))
+            return "terminal";
+        if (n.contains("powershell"))
+            return "powershell";
+        if (n.contains("vlc"))
+            return "vlc";
+        if (n.contains("git"))
+            return "git";
+        if (n.contains("github"))
+            return "github";
+        if (n.contains("whatsapp"))
+            return "whatsapp";
+        if (n.contains("telegram"))
+            return "telegram";
+        if (n.contains("maltego"))
+            return "maltego";
+        if (n.contains("obs"))
+            return "obs";
+        if (n.contains("postman"))
+            return "postman";
+        if (n.contains("word"))
+            return "microsoft-word";
+        if (n.contains("excel"))
+            return "microsoft-excel";
+        if (n.contains("powerpoint"))
+            return "microsoft-powerpoint";
         return null;
     }
 
@@ -973,7 +1232,8 @@ public class MainActivity extends AppCompatActivity {
         etTextInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if (isUpdatingKeypadText) return;
+                if (isUpdatingKeypadText)
+                    return;
                 // Soft keyboard Backspace detection
                 if (count > after) {
                     int deleteCount = count - after;
@@ -985,7 +1245,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (isUpdatingKeypadText) return;
+                if (isUpdatingKeypadText)
+                    return;
                 if (count > 0) {
                     CharSequence typed = s.subSequence(start, start + count);
                     sendText(typed.toString());
@@ -1045,7 +1306,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("dx", dx);
             obj.put("dy", dy);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendClick(String button) {
@@ -1054,7 +1316,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "c");
             obj.put("b", button);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendScroll(int dy) {
@@ -1063,7 +1326,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "s");
             obj.put("dy", dy);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendKey(String keyName) {
@@ -1073,7 +1337,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "k");
             obj.put("k", keyName);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendAction(String actionName) {
@@ -1083,7 +1348,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "a");
             obj.put("a", actionName);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendText(String text) {
@@ -1093,7 +1359,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "text");
             obj.put("text", text);
             btManager.send(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void vibrate(int ms) {
@@ -1105,9 +1372,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkPermissionsAndLoadDevices() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
+                        new String[] { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN },
                         PERMISSION_REQ_CODE);
                 return;
             }
@@ -1120,7 +1388,8 @@ public class MainActivity extends AppCompatActivity {
         bondedDevicesList.clear();
         bondedNamesList.clear();
 
-        if (btAdapter == null) return;
+        if (btAdapter == null)
+            return;
 
         Set<BluetoothDevice> paired = btAdapter.getBondedDevices();
         int autoSelectIndex = -1;
@@ -1144,7 +1413,8 @@ public class MainActivity extends AppCompatActivity {
             bondedNamesList.add("NO PAIRED LAPTOP FOUND");
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, bondedNamesList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                bondedNamesList);
         spDevices.setAdapter(adapter);
 
         if (autoSelectIndex != -1) {
@@ -1153,33 +1423,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQ_CODE && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == PERMISSION_REQ_CODE && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             loadPairedDevices();
         }
     }
 
-    private final SensorEventListener gyroListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (!isAirMouseActive || event.sensor.getType() != Sensor.TYPE_GYROSCOPE) return;
-            int orient = getResources().getConfiguration().orientation;
-            float rawX, rawY;
-            if (orient == Configuration.ORIENTATION_LANDSCAPE) {
-                rawX = -event.values[2] * 35.0f;
-                rawY = -event.values[1] * 35.0f;
-            } else {
-                rawX = -event.values[2] * 35.0f;
-                rawY = -event.values[0] * 35.0f;
-            }
-            if (Math.abs(rawX) < 1.2f && Math.abs(rawY) < 1.2f) return;
-            sendMouseMove(Math.round(rawX), Math.round(rawY));
-        }
+    private final SensorEventListener gyroListener=new SensorEventListener(){@Override public void onSensorChanged(SensorEvent event){if(!isAirMouseActive||event.sensor.getType()!=Sensor.TYPE_GYROSCOPE)return;int orient=getResources().getConfiguration().orientation;float rawX,rawY;if(orient==Configuration.ORIENTATION_LANDSCAPE){rawX=-event.values[2]*35.0f;rawY=-event.values[1]*35.0f;}else{rawX=-event.values[2]*35.0f;rawY=-event.values[0]*35.0f;}if(Math.abs(rawX)<1.2f&&Math.abs(rawY)<1.2f)return;sendMouseMove(Math.round(rawX),Math.round(rawY));}
 
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-    };
+    @Override public void onAccuracyChanged(Sensor sensor,int accuracy){}};
 
     private void promptSetPin() {
         vibrate(20);
@@ -1213,37 +1468,41 @@ public class MainActivity extends AppCompatActivity {
             BiometricPrompt prompt = new BiometricPrompt.Builder(this)
                     .setTitle("Unlock Windows PC")
                     .setSubtitle("Confirm fingerprint or face to send PIN")
-                    .setNegativeButton("Cancel", getMainExecutor(), (d, w) -> {})
+                    .setNegativeButton("Cancel", getMainExecutor(), (d, w) -> {
+                    })
                     .build();
 
-            prompt.authenticate(new CancellationSignal(), getMainExecutor(), new BiometricPrompt.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
-                    vibrate(40);
-                    try {
-                        JSONObject obj = new JSONObject();
-                        obj.put("t", "unlock");
-                        obj.put("pin", pin);
-                        btManager.send(obj);
-                        Toast.makeText(MainActivity.this, "Unlocked PC", Toast.LENGTH_SHORT).show();
-                    } catch (Exception ignored) {}
-                }
+            prompt.authenticate(new CancellationSignal(), getMainExecutor(),
+                    new BiometricPrompt.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                            super.onAuthenticationSucceeded(result);
+                            vibrate(40);
+                            try {
+                                JSONObject obj = new JSONObject();
+                                obj.put("t", "unlock");
+                                obj.put("pin", pin);
+                                btManager.send(obj);
+                                Toast.makeText(MainActivity.this, "Unlocked PC", Toast.LENGTH_SHORT).show();
+                            } catch (Exception ignored) {
+                            }
+                        }
 
-                @Override
-                public void onAuthenticationFailed() {
-                    super.onAuthenticationFailed();
-                    vibrate(100);
-                    Toast.makeText(MainActivity.this, "Biometric failed", Toast.LENGTH_SHORT).show();
-                }
-            });
+                        @Override
+                        public void onAuthenticationFailed() {
+                            super.onAuthenticationFailed();
+                            vibrate(100);
+                            Toast.makeText(MainActivity.this, "Biometric failed", Toast.LENGTH_SHORT).show();
+                        }
+                    });
         } else {
             try {
                 JSONObject obj = new JSONObject();
                 obj.put("t", "unlock");
                 obj.put("pin", pin);
                 btManager.send(obj);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -1254,7 +1513,8 @@ public class MainActivity extends AppCompatActivity {
             obj.put("t", "clip_get");
             btManager.send(obj);
             Toast.makeText(this, "Requesting PC Clipboard...", Toast.LENGTH_SHORT).show();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void pasteToPc() {
@@ -1270,7 +1530,8 @@ public class MainActivity extends AppCompatActivity {
                     obj.put("paste", true);
                     btManager.send(obj);
                     Toast.makeText(this, "Pasted phone clipboard to PC", Toast.LENGTH_SHORT).show();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             } else {
                 Toast.makeText(this, "Phone clipboard is empty", Toast.LENGTH_SHORT).show();
             }
@@ -1284,12 +1545,14 @@ public class MainActivity extends AppCompatActivity {
         if (cb != null) {
             ClipData clip = ClipData.newPlainText("PC Clipboard", text);
             cb.setPrimaryClip(clip);
-            Toast.makeText(this, "Copied from PC: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Copied from PC: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
     private void updateTelemetryUI(int cpu, int ram, int bat, int ac) {
-        if (tvTelemetry == null) return;
+        if (tvTelemetry == null)
+            return;
         StringBuilder sb = new StringBuilder();
         sb.append("CPU: ").append(cpu).append("% | ");
         sb.append("RAM: ").append(ram).append("% | ");
@@ -1335,7 +1598,8 @@ public class MainActivity extends AppCompatActivity {
         }
         try {
             iconLoader.shutdownNow();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         btManager.disconnect();
     }
 }

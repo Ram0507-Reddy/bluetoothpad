@@ -418,8 +418,9 @@ def send_mouse_click(btn: str):
 
 def send_mouse_scroll(dy: int):
     attach_to_user_desktop()
-    inp = INPUT(type=0, mi=MOUSEINPUT(0, 0, dy, MOUSEEVENTF_WHEEL, 0, 0))
-    user32.SendInput(1, ctypes.byref(inp), 40)
+    if dy != 0 and abs(dy) < 60:
+        dy = 120 if dy > 0 else -120
+    user32.mouse_event(MOUSEEVENTF_WHEEL, 0, 0, ctypes.c_long(dy).value, 0)
 
 def press_key(vk_code: int, extended: bool = False):
     attach_to_user_desktop()
