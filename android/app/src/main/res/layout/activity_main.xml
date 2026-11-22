@@ -557,6 +557,19 @@
                     <View android:layout_width="6dp" android:layout_height="match_parent" />
 
                     <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnProximityLock"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1.1"
+                        android:text="AUTO-LOCK: OFF"
+                        android:textAllCaps="true"
+                        android:textSize="9sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
                         android:id="@+id/btnScreenOff"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"

@@ -462,7 +462,11 @@ def send_unicode_char(char: str):
     inputs = (INPUT * 2)(inp_down, inp_up)
     user32.SendInput(2, inputs, 40)
 
+proximity_lock_enabled = False
+last_heartbeat_time = time.time()
+
 def handle_command(cmd: dict, client_sock=None):
+    global proximity_lock_enabled, last_heartbeat_time
     t = cmd.get("t")
 
     if t == "m":
@@ -607,12 +611,24 @@ def handle_command(cmd: dict, client_sock=None):
             else:
                 send_unicode_char(ch)
 
+    elif t == "proximity":
+        proximity_lock_enabled = bool(cmd.get("enabled", False))
+        last_heartbeat_time = time.time()
+        print(f"[PROXIMITY] Walk-Away Auto-Lock is now: {proximity_lock_enabled}")
+        sys.stdout.flush()
+        return {"t": "proximity_ack", "enabled": proximity_lock_enabled}
+
+    elif t == "hb":
+        last_heartbeat_time = time.time()
+        return None
+
     elif t == "ping":
         return {"t": "pong"}
 
     return None
 
 def start_server(port: int = 4):
+    global proximity_lock_enabled, last_heartbeat_time
     attach_to_user_desktop()
     server_sock = socket.socket(AF_BTH, socket.SOCK_STREAM, BTPROTO_RFCOMM)
     server_sock.bind(('00:00:00:00:00:00', port))
@@ -637,6 +653,7 @@ def start_server(port: int = 4):
             sys.stdout.flush()
 
             attach_to_user_desktop()
+            last_heartbeat_time = time.time()
 
             app_names = sorted(list(INSTALLED_APPS.keys()))
             welcome = json.dumps({"status": "connected", "mac": local_addr, "apps": app_names}) + "\n"
@@ -644,14 +661,23 @@ def start_server(port: int = 4):
 
             stop_telemetry = threading.Event()
             def telemetry_worker():
+                global proximity_lock_enabled, last_heartbeat_time
                 while not stop_telemetry.is_set():
                     try:
+                        # Check proximity heartbeat
+                        if proximity_lock_enabled and (time.time() - last_heartbeat_time > 6.0):
+                            print("[PROXIMITY] Heartbeat lost (>6s) -> Locking workstation!")
+                            sys.stdout.flush()
+                            attach_to_user_desktop()
+                            user32.LockWorkStation()
+                            proximity_lock_enabled = False
+
                         telem = get_telemetry()
                         msg = (json.dumps(telem) + "\n").encode("utf-8")
                         client_sock.sendall(msg)
                     except Exception:
                         break
-                    stop_telemetry.wait(2.5)
+                    stop_telemetry.wait(2.0)
 
             t_thread = threading.Thread(target=telemetry_worker, daemon=True)
             t_thread.start()
@@ -662,6 +688,12 @@ def start_server(port: int = 4):
                 if not data:
                     print("[-] Phone disconnected.")
                     sys.stdout.flush()
+                    if proximity_lock_enabled:
+                        print("[PROXIMITY] Bluetooth disconnected while Auto-Lock active -> Locking workstation!")
+                        sys.stdout.flush()
+                        attach_to_user_desktop()
+                        user32.LockWorkStation()
+                        proximity_lock_enabled = False
                     break
 
                 buffer += data.decode("utf-8", errors="ignore")
@@ -672,7 +704,7 @@ def start_server(port: int = 4):
                         continue
                     try:
                         cmd = json.loads(line)
-                        if cmd.get("t") not in ["m", "s"]:
+                        if cmd.get("t") not in ["m", "s", "hb"]:
                             print(f"[CMD] {cmd}")
                             sys.stdout.flush()
                         resp = handle_command(cmd, client_sock)

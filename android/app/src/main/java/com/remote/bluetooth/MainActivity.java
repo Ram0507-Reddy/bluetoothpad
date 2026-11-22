@@ -14,6 +14,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Vibrator;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -115,6 +117,24 @@ public class MainActivity extends AppCompatActivity {
     private boolean isDarkMode = true;
     private SharedPreferences prefs;
 
+    // Proximity Auto-Lock & Heartbeat
+    private Button btnProximityLock;
+    private boolean isProximityLockEnabled = false;
+    private final Handler heartbeatHandler = new Handler(Looper.getMainLooper());
+    private final Runnable heartbeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (btManager.isConnected() && isProximityLockEnabled) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("t", "hb");
+                    btManager.send(obj);
+                } catch (Exception ignored) {}
+                heartbeatHandler.postDelayed(this, 2500);
+            }
+        }
+    };
+
     // Bluetooth
     private BluetoothAdapter btAdapter;
     private final BluetoothManager btManager = new BluetoothManager();
@@ -212,6 +232,8 @@ public class MainActivity extends AppCompatActivity {
         btnOpenPhoneKeypad = findViewById(R.id.btnOpenPhoneKeypad);
         btnSendText = findViewById(R.id.btnSendText);
         etTextInput = findViewById(R.id.etTextInput);
+        btnProximityLock = findViewById(R.id.btnProximityLock);
+        isProximityLockEnabled = prefs.getBoolean("proximity_lock", false);
 
         btAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -229,11 +251,18 @@ public class MainActivity extends AppCompatActivity {
                 updateStatusUI();
                 vibrate(40);
                 requestAppList();
+                sendProximityState();
+                startHeartbeat();
             }
 
             @Override
             public void onDisconnected() {
                 updateStatusUI();
+                stopHeartbeat();
+                if (isProximityLockEnabled) {
+                    vibrate(200);
+                    Toast.makeText(MainActivity.this, "Bluetooth Disconnected - PC Auto-Locked", Toast.LENGTH_LONG).show();
+                }
             }
 
             @Override
@@ -406,6 +435,7 @@ public class MainActivity extends AppCompatActivity {
         if (appsAdapter != null)
             appsAdapter.notifyDataSetChanged();
         switchTab(currentTabId);
+        updateProximityUI();
     }
 
     private void applyButtonTheme(Button btn, boolean isProminent) {
@@ -546,7 +576,6 @@ public class MainActivity extends AppCompatActivity {
             int action = event.getActionMasked();
 
             switch (action) {
-                case MotionEvent.ACTION_DOWN:
                 case MotionEvent.ACTION_DOWN: {
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     if (imm != null)
@@ -565,8 +594,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    if (event.getPointerCount() == 2) {
                 case MotionEvent.ACTION_POINTER_DOWN: {
                     int count = event.getPointerCount();
                     if (count > maxPointersInGesture) maxPointersInGesture = count;
@@ -590,15 +617,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                case MotionEvent.ACTION_MOVE:
                 case MotionEvent.ACTION_MOVE: {
                     if (pointerCount == 1) {
-                        float curX = event.getX(0);
-                        float curY = event.getY(0);
-                        mouseAccumX += (curX - lastX) * TOUCH_SENSITIVITY;
-                        mouseAccumY += (curY - lastY) * TOUCH_SENSITIVITY;
-                        lastX = curX;
-                        lastY = curY;
                         if (maxPointersInGesture == 1) {
                             float curX = event.getX(0);
                             float curY = event.getY(0);
@@ -612,12 +632,6 @@ public class MainActivity extends AppCompatActivity {
                             lastX = curX;
                             lastY = curY;
 
-                        int moveX = (int) mouseAccumX;
-                        int moveY = (int) mouseAccumY;
-                        if (moveX != 0 || moveY != 0) {
-                            mouseAccumX -= moveX;
-                            mouseAccumY -= moveY;
-                            sendMouseMove(moveX, moveY);
                             int moveX = (int) mouseAccumX;
                             int moveY = (int) mouseAccumY;
                             if (moveX != 0 || moveY != 0) {
@@ -632,7 +646,6 @@ public class MainActivity extends AppCompatActivity {
                         float currentPinchDist = (float) Math.hypot(curPinchX, curPinchY);
                         float pinchDelta = currentPinchDist - initialPinchDistance;
 
-                        if (Math.abs(pinchDelta) > 120f) {
                         if (Math.abs(pinchDelta) > 110f) {
                             gestureMoved = true;
                             if (pinchDelta > 0) {
@@ -643,10 +656,6 @@ public class MainActivity extends AppCompatActivity {
                             initialPinchDistance = currentPinchDist;
                         } else {
                             float avgY = (event.getY(0) + event.getY(1)) / 2f;
-                            float dyScroll = avgY - lastScrollY;
-                            if (Math.abs(dyScroll) > 4f) {
-                                sendScroll((int) (-dyScroll * 3.5f));
-                                lastScrollY = avgY;
                             float dyScroll = avgY - lastMultiTouchFocusY;
                             lastMultiTouchFocusY = avgY;
                             if (Math.abs(avgY - multiTouchFocusStartY) > 10f) {
@@ -736,14 +745,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_POINTER_UP: {
                     long duration = System.currentTimeMillis() - touchStartTime;
-                    float endX = event.getX(0);
-                    float endY = event.getY(0);
-                    float totalDist = (float) Math.hypot(endX - startX, endY - startY);
-                    float totalDx = endX - startX;
-                    float totalDy = endY - startY;
                     if (!gestureMoved && !gestureTriggered && duration < 350) {
                         if (maxPointersInGesture == 2) {
                             sendClick("r"); // 2-finger tap -> Right Click
@@ -765,9 +768,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                    if (maxPointersInGesture == 1) {
-                        // 1-Finger Tap / Double-tap
-                        if (duration < 240 && totalDist < 25f) {
                 case MotionEvent.ACTION_UP: {
                     long duration = System.currentTimeMillis() - touchStartTime;
                     if (!gestureTriggered && !gestureMoved && duration < 350) {
@@ -781,52 +781,16 @@ public class MainActivity extends AppCompatActivity {
                                 vibrate(15);
                             }
                             lastTapTime = now;
-                        }
-                    } else if (maxPointersInGesture == 2) {
-                        // 2-Finger Tap -> Right Click
-                        if (duration < 280 && totalDist < 35f) {
                         } else if (maxPointersInGesture == 2) {
                             sendClick("r");
                             vibrate(25);
-                        }
-                    } else if (maxPointersInGesture == 3) {
-                        // 3-Finger Tap: Search
-                        if (duration < 280 && totalDist < 35f) {
                             Toast.makeText(MainActivity.this, "2-Finger: Right Click", Toast.LENGTH_SHORT).show();
                         } else if (maxPointersInGesture == 3) {
                             sendAction("search");
-                        } else if (Math.abs(totalDy) > Math.abs(totalDx) && Math.abs(totalDy) > 160f) {
-                            if (totalDy < 0) {
-                                sendAction("taskview"); // Swipe UP
-                            } else {
-                                sendAction("desktop"); // Swipe DOWN
-                            }
-                        } else if (Math.abs(totalDx) > 160f) {
-                            if (totalDx < 0) {
-                                sendAction("app_next"); // Swipe LEFT
-                            } else {
-                                sendAction("app_prev"); // Swipe RIGHT
-                            }
-                        }
-                    } else if (maxPointersInGesture >= 4) {
-                        // 4-Finger Tap: Action Center
-                        if (duration < 280 && totalDist < 35f) {
                             vibrate(30);
                             Toast.makeText(MainActivity.this, "3-Finger: Search", Toast.LENGTH_SHORT).show();
                         } else if (maxPointersInGesture >= 4) {
                             sendAction("action_center");
-                        } else if (Math.abs(totalDx) > Math.abs(totalDy) && Math.abs(totalDx) > 160f) {
-                            if (totalDx < 0) {
-                                sendAction("vdesk_right");
-                            } else {
-                                sendAction("vdesk_left");
-                            }
-                        } else if (Math.abs(totalDy) > 160f) {
-                            if (totalDy < 0) {
-                                sendAction("win_max");
-                            } else {
-                                sendAction("win_min");
-                            }
                             vibrate(35);
                             Toast.makeText(MainActivity.this, "4-Finger: Action Center", Toast.LENGTH_SHORT).show();
                         }
@@ -838,7 +802,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
 
-                case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_CANCEL: {
                     maxPointersInGesture = 1;
                     gestureTriggered = false;
@@ -859,9 +822,6 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float dy = y - lastScrollY;
-                    if (Math.abs(dy) > 2) {
-                        sendScroll((int) (-dy * 4.5f));
-                        lastScrollY = y;
                     lastScrollY = y;
                     dedicatedScrollAccum += dy;
                     if (Math.abs(dedicatedScrollAccum) >= 8f) {
@@ -934,6 +894,25 @@ public class MainActivity extends AppCompatActivity {
         View bSetPin = findViewById(R.id.btnSetPin);
         if (bSetPin != null)
             bSetPin.setOnClickListener(v -> promptSetPin());
+
+        if (btnProximityLock != null) {
+            updateProximityUI();
+            btnProximityLock.setOnClickListener(v -> {
+                isProximityLockEnabled = !isProximityLockEnabled;
+                prefs.edit().putBoolean("proximity_lock", isProximityLockEnabled).apply();
+                vibrate(25);
+                updateProximityUI();
+                sendProximityState();
+                Toast.makeText(this, isProximityLockEnabled ?
+                        "Auto-Lock ENABLED (Locks PC when out of range)" :
+                        "Auto-Lock DISABLED", Toast.LENGTH_SHORT).show();
+                if (isProximityLockEnabled && btManager.isConnected()) {
+                    startHeartbeat();
+                } else {
+                    stopHeartbeat();
+                }
+            });
+        }
 
         View bScreenOff = findViewById(R.id.btnScreenOff);
         if (bScreenOff != null)
@@ -1574,11 +1553,63 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void updateProximityUI() {
+        if (btnProximityLock == null) return;
+        btnProximityLock.setText(isProximityLockEnabled ? "AUTO-LOCK: ON" : "AUTO-LOCK: OFF");
+        applyButtonTheme(btnProximityLock, isProximityLockEnabled);
+    }
+
+    private void sendProximityState() {
+        if (!btManager.isConnected()) return;
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("t", "proximity");
+            obj.put("enabled", isProximityLockEnabled);
+            btManager.send(obj);
+        } catch (Exception ignored) {}
+    }
+
+    private void startHeartbeat() {
+        stopHeartbeat();
+        if (isProximityLockEnabled) {
+            heartbeatHandler.postDelayed(heartbeatRunnable, 2500);
+        }
+    }
+
+    private void stopHeartbeat() {
+        heartbeatHandler.removeCallbacks(heartbeatRunnable);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            sendKey("vol_up");
+            vibrate(15);
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            sendKey("vol_down");
+            vibrate(15);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         if (isAirMouseActive && sensorManager != null && gyroSensor != null) {
             sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
+        if (isProximityLockEnabled && btManager.isConnected()) {
+            startHeartbeat();
         }
     }
 
@@ -1593,6 +1624,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopHeartbeat();
         if (sensorManager != null) {
             sensorManager.unregisterListener(gyroListener);
         }
