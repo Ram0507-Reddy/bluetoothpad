@@ -119,6 +119,121 @@ class INPUT(ctypes.Structure):
         ("u", _INPUT_UNION)
     ]
 
+# System Telemetry & Clipboard Structures
+class SYSTEM_POWER_STATUS(ctypes.Structure):
+    _fields_ = [
+        ('ACLineStatus', wintypes.BYTE),
+        ('BatteryFlag', wintypes.BYTE),
+        ('BatteryLifePercent', wintypes.BYTE),
+        ('SystemStatusFlag', wintypes.BYTE),
+        ('BatteryLifeTime', wintypes.DWORD),
+        ('BatteryFullLifeTime', wintypes.DWORD),
+    ]
+
+class MEMORYSTATUSEX(ctypes.Structure):
+    _fields_ = [
+        ('dwLength', wintypes.DWORD),
+        ('dwMemoryLoad', wintypes.DWORD),
+        ('ullTotalPhys', ctypes.c_ulonglong),
+        ('ullAvailPhys', ctypes.c_ulonglong),
+        ('ullTotalPageFile', ctypes.c_ulonglong),
+        ('ullAvailPageFile', ctypes.c_ulonglong),
+        ('ullTotalVirtual', ctypes.c_ulonglong),
+        ('ullAvailVirtual', ctypes.c_ulonglong),
+        ('ullTotalExtendedVirtual', ctypes.c_ulonglong),
+    ]
+
+class FILETIME(ctypes.Structure):
+    _fields_ = [('dwLowDateTime', wintypes.DWORD), ('dwHighDateTime', wintypes.DWORD)]
+
+CF_UNICODETEXT = 13
+GMEM_MOVEABLE = 0x0002
+
+user32.OpenClipboard.argtypes = [wintypes.HWND]
+user32.OpenClipboard.restype = wintypes.BOOL
+user32.CloseClipboard.restype = wintypes.BOOL
+user32.EmptyClipboard.restype = wintypes.BOOL
+user32.GetClipboardData.argtypes = [wintypes.UINT]
+user32.GetClipboardData.restype = ctypes.c_void_p
+user32.SetClipboardData.argtypes = [wintypes.UINT, ctypes.c_void_p]
+user32.SetClipboardData.restype = ctypes.c_void_p
+user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.SendMessageW.restype = ctypes.c_longlong
+
+kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+kernel32.GlobalAlloc.restype = ctypes.c_void_p
+kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+kernel32.GlobalLock.restype = ctypes.c_void_p
+kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+kernel32.GlobalUnlock.restype = wintypes.BOOL
+
+_last_cpu_time = (0, 0)
+def get_cpu_percent():
+    global _last_cpu_time
+    def to_int(ft):
+        return (ft.dwHighDateTime << 32) | ft.dwLowDateTime
+    idle, kernel, user = FILETIME(), FILETIME(), FILETIME()
+    if kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)):
+        i, k, u = to_int(idle), to_int(kernel), to_int(user)
+        total = k + u
+        last_idle, last_total = _last_cpu_time
+        _last_cpu_time = (i, total)
+        if last_total > 0 and total > last_total:
+            delta_total = total - last_total
+            delta_idle = i - last_idle
+            if delta_total > 0:
+                return max(0, min(100, int((1.0 - (delta_idle / delta_total)) * 100)))
+    return 0
+
+def get_telemetry():
+    sps = SYSTEM_POWER_STATUS()
+    kernel32.GetSystemPowerStatus(ctypes.byref(sps))
+    bat = sps.BatteryLifePercent if sps.BatteryLifePercent <= 100 else 100
+    ac = sps.ACLineStatus
+
+    mem = MEMORYSTATUSEX()
+    mem.dwLength = ctypes.sizeof(mem)
+    kernel32.GlobalMemoryStatusEx(ctypes.byref(mem))
+    ram = mem.dwMemoryLoad
+
+    cpu = get_cpu_percent()
+    return {"t": "telemetry", "cpu": cpu, "ram": ram, "bat": bat, "ac": ac}
+
+def get_clipboard_text():
+    if not user32.OpenClipboard(0):
+        return ''
+    try:
+        h_glb = user32.GetClipboardData(CF_UNICODETEXT)
+        if not h_glb:
+            return ''
+        ptr = kernel32.GlobalLock(h_glb)
+        text = ctypes.wstring_at(ptr) if ptr else ''
+        kernel32.GlobalUnlock(h_glb)
+        return text
+    except Exception:
+        return ''
+    finally:
+        user32.CloseClipboard()
+
+def set_clipboard_text(text):
+    if not user32.OpenClipboard(0):
+        return False
+    try:
+        user32.EmptyClipboard()
+        bytes_data = (text + '\0').encode('utf-16le')
+        h_glb = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(bytes_data))
+        if not h_glb:
+            return False
+        ptr = kernel32.GlobalLock(h_glb)
+        ctypes.memmove(ptr, bytes_data, len(bytes_data))
+        kernel32.GlobalUnlock(h_glb)
+        user32.SetClipboardData(CF_UNICODETEXT, h_glb)
+        return True
+    except Exception:
+        return False
+    finally:
+        user32.CloseClipboard()
+
 _ATTACHED_DESKTOP = None
 
 def attach_to_user_desktop():
@@ -422,6 +537,42 @@ def handle_command(cmd: dict, client_sock=None):
             subprocess.Popen(["start", "https://google.com"], shell=True)
         elif action == "explorer":
             subprocess.Popen(["explorer.exe"])
+        elif action == "screen_off":
+            user32.SendMessageW(0xFFFF, 0x0112, 0xF170, 2)
+        elif action == "snip":
+            key_combination([0x5B, 0x10, ord('S')]) # Win + Shift + S
+        elif action == "mic_mute":
+            key_combination([0x11, 0x10, ord('M')]) # Ctrl + Shift + M
+        elif action == "task_mgr":
+            key_combination([0x11, 0x10, 0x1B]) # Ctrl + Shift + Esc
+        elif action == "sleep":
+            subprocess.Popen("rundll32.exe powrprof.dll,SetSuspendState 0,1,0", shell=True)
+        elif action == "restart":
+            subprocess.Popen("shutdown /r /t 0", shell=True)
+        elif action == "shutdown":
+            subprocess.Popen("shutdown /s /t 0", shell=True)
+
+    elif t == "clip_get":
+        return {"t": "clip_data", "text": get_clipboard_text()}
+
+    elif t == "clip_set":
+        text = cmd.get("text", "")
+        set_clipboard_text(text)
+        if cmd.get("paste"):
+            time.sleep(0.04)
+            key_combination([0x11, ord('V')]) # Ctrl + V
+        return {"t": "clip_ok"}
+
+    elif t == "unlock":
+        pin = cmd.get("pin", "")
+        press_key(0x20) # Wake lock screen / prompt PIN
+        time.sleep(0.3)
+        for ch in pin:
+            send_unicode_char(ch)
+            time.sleep(0.02)
+        time.sleep(0.05)
+        press_key(0x0D) # Enter
+        return {"t": "unlock_sent"}
 
     elif t == "get_apps":
         app_names = sorted(list(INSTALLED_APPS.keys()))
@@ -490,6 +641,20 @@ def start_server(port: int = 4):
             welcome = json.dumps({"status": "connected", "mac": local_addr, "apps": app_names}) + "\n"
             client_sock.sendall(welcome.encode("utf-8"))
 
+            stop_telemetry = threading.Event()
+            def telemetry_worker():
+                while not stop_telemetry.is_set():
+                    try:
+                        telem = get_telemetry()
+                        msg = (json.dumps(telem) + "\n").encode("utf-8")
+                        client_sock.sendall(msg)
+                    except Exception:
+                        break
+                    stop_telemetry.wait(2.5)
+
+            t_thread = threading.Thread(target=telemetry_worker, daemon=True)
+            t_thread.start()
+
             buffer = ""
             while True:
                 data = client_sock.recv(1024)
@@ -518,6 +683,7 @@ def start_server(port: int = 4):
                         print(f"[!] Command execution error: {e}")
                         sys.stdout.flush()
 
+            stop_telemetry.set()
             client_sock.close()
 
         except KeyboardInterrupt:

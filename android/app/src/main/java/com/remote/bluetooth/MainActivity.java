@@ -25,6 +25,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.hardware.biometrics.BiometricPrompt;
+import android.os.CancellationSignal;
+import android.text.InputType;
+import android.view.Surface;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -50,6 +61,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
 
     private View rootLayout, headerCard;
     private View statusIndicator;
-    private TextView tvStatus;
+    private TextView tvStatus, tvTelemetry;
     private Spinner spDevices;
     private Button btnConnect, btnThemeToggle;
 
@@ -74,8 +86,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Touchpad Views
     private View touchpadSurface, scrollSurface;
-    private Button btnLeftClick, btnRightClick;
+    private Button btnLeftClick, btnRightClick, btnAirMouse;
     private TextView tvTouchpadHint;
+
+    // Sensors & Air Mouse
+    private SensorManager sensorManager;
+    private Sensor gyroSensor;
+    private boolean isAirMouseActive = false;
 
     // App Launcher Views
     private EditText etAppSearch;
@@ -171,7 +188,14 @@ public class MainActivity extends AppCompatActivity {
         scrollSurface = findViewById(R.id.scrollSurface);
         btnLeftClick = findViewById(R.id.btnLeftClick);
         btnRightClick = findViewById(R.id.btnRightClick);
+        btnAirMouse = findViewById(R.id.btnAirMouse);
         tvTouchpadHint = findViewById(R.id.tvTouchpadHint);
+        tvTelemetry = findViewById(R.id.tvTelemetry);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        }
 
         etAppSearch = findViewById(R.id.etAppSearch);
         btnRefreshApps = findViewById(R.id.btnRefreshApps);
@@ -246,6 +270,19 @@ public class MainActivity extends AppCompatActivity {
                 }
                 filterApps(etAppSearch != null ? etAppSearch.getText().toString() : "");
             }
+            if (obj.has("t")) {
+                String t = obj.getString("t");
+                if ("telemetry".equals(t)) {
+                    int cpu = obj.optInt("cpu", 0);
+                    int ram = obj.optInt("ram", 0);
+                    int bat = obj.optInt("bat", 0);
+                    int ac = obj.optInt("ac", 0);
+                    updateTelemetryUI(cpu, ram, bat, ac);
+                } else if ("clip_data".equals(t)) {
+                    String text = obj.optString("text", "");
+                    setAndroidClipboard(text);
+                }
+            }
         } catch (Exception ignored) {}
     }
 
@@ -286,10 +323,13 @@ public class MainActivity extends AppCompatActivity {
         int[] regularBtnIds = {
             R.id.btnVolUp, R.id.btnVolDown, R.id.btnMute, R.id.btnPrev, R.id.btnNext,
             R.id.btnSlidePrev, R.id.btnSlideNext, R.id.btnF5, R.id.btnEsc,
+            R.id.btnUnlock, R.id.btnAirMouse, R.id.btnSetPin, R.id.btnScreenOff,
+            R.id.btnCopyFromPc, R.id.btnPasteToPc, R.id.btnSnip, R.id.btnMicMute, R.id.btnTaskMgr,
+            R.id.btnSleep, R.id.btnRestart, R.id.btnShutdown,
             R.id.btnLock, R.id.btnDesktop, R.id.btnAltTab, R.id.btnTaskView,
             R.id.btnSearch, R.id.btnActionCenter, R.id.btnVDeskLeft, R.id.btnVDeskRight,
-            R.id.btnWinMax, R.id.btnWinMin, R.id.btnLaunchTerminal, R.id.btnLaunchBrowser, R.id.btnLaunchExplorer,
-            R.id.btnCopy, R.id.btnPaste, R.id.btnUndo, R.id.btnSelectAll,
+            R.id.btnLaunchTerminal, R.id.btnLaunchExplorer,
+            R.id.btnCopy, R.id.btnPaste, R.id.btnUndo,
             R.id.btnKeyEnter, R.id.btnKeyBackspace, R.id.btnKeySpace, R.id.btnKeyEsc,
             R.id.btnKeyTab, R.id.btnKeyWin, R.id.btnKeyDel,
             R.id.btnKeyUp, R.id.btnKeyDown, R.id.btnKeyLeft, R.id.btnKeyRight,
@@ -305,6 +345,9 @@ public class MainActivity extends AppCompatActivity {
 
         Button btnPlay = findViewById(R.id.btnPlayPause);
         if (btnPlay != null) applyButtonTheme(btnPlay, true);
+
+        Button btnUnlock = findViewById(R.id.btnUnlock);
+        if (btnUnlock != null) applyButtonTheme(btnUnlock, true);
 
         if (btnSendText != null) applyButtonTheme(btnSendText, true);
         if (btnOpenPhoneKeypad != null) applyButtonTheme(btnOpenPhoneKeypad, true);
@@ -379,6 +422,16 @@ public class MainActivity extends AppCompatActivity {
             int connText = isDarkMode ? Color.parseColor("#000000") : Color.parseColor("#FFFFFF");
             btnConnect.setBackground(createBoxDrawable(connBg, connBg, 8));
             btnConnect.setTextColor(connText);
+
+            if (tvTelemetry != null) tvTelemetry.setVisibility(View.GONE);
+            if (isAirMouseActive) {
+                isAirMouseActive = false;
+                if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
+                if (btnAirMouse != null) {
+                    btnAirMouse.setText("AIR MOUSE");
+                    applyButtonTheme(btnAirMouse, false);
+                }
+            }
         }
     }
 
@@ -625,6 +678,31 @@ public class MainActivity extends AppCompatActivity {
             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             sendClick("r");
         });
+
+        if (btnAirMouse != null) {
+            btnAirMouse.setOnClickListener(v -> {
+                vibrate(20);
+                if (!btManager.isConnected()) {
+                    Toast.makeText(this, "Connect to laptop first", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (gyroSensor == null) {
+                    Toast.makeText(this, "Gyroscope sensor not available", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                isAirMouseActive = !isAirMouseActive;
+                if (isAirMouseActive) {
+                    sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+                    btnAirMouse.setText("AIR MOUSE: ON");
+                    btnAirMouse.setBackgroundResource(R.drawable.bg_button_active);
+                    btnAirMouse.setTextColor(getColor(R.color.bg_black));
+                } else {
+                    sensorManager.unregisterListener(gyroListener);
+                    btnAirMouse.setText("AIR MOUSE");
+                    applyButtonTheme(btnAirMouse, false);
+                }
+            });
+        }
     }
 
     private void setupMediaControls() {
@@ -643,27 +721,82 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupShortcuts() {
-        findViewById(R.id.btnLock).setOnClickListener(v -> sendAction("lock"));
-        findViewById(R.id.btnDesktop).setOnClickListener(v -> sendAction("desktop"));
-        findViewById(R.id.btnAltTab).setOnClickListener(v -> sendAction("alttab"));
-        findViewById(R.id.btnTaskView).setOnClickListener(v -> sendAction("taskview"));
+        // Biometric & Security
+        View bUnlock = findViewById(R.id.btnUnlock);
+        if (bUnlock != null) bUnlock.setOnClickListener(v -> triggerBiometricUnlock());
 
-        findViewById(R.id.btnSearch).setOnClickListener(v -> sendAction("search"));
-        findViewById(R.id.btnActionCenter).setOnClickListener(v -> sendAction("action_center"));
-        findViewById(R.id.btnVDeskLeft).setOnClickListener(v -> sendAction("vdesk_left"));
-        findViewById(R.id.btnVDeskRight).setOnClickListener(v -> sendAction("vdesk_right"));
+        View bSetPin = findViewById(R.id.btnSetPin);
+        if (bSetPin != null) bSetPin.setOnClickListener(v -> promptSetPin());
 
-        findViewById(R.id.btnWinMax).setOnClickListener(v -> sendAction("win_max"));
-        findViewById(R.id.btnWinMin).setOnClickListener(v -> sendAction("win_min"));
+        View bScreenOff = findViewById(R.id.btnScreenOff);
+        if (bScreenOff != null) bScreenOff.setOnClickListener(v -> sendAction("screen_off"));
 
-        findViewById(R.id.btnLaunchTerminal).setOnClickListener(v -> sendAction("terminal"));
-        findViewById(R.id.btnLaunchBrowser).setOnClickListener(v -> sendAction("browser"));
-        findViewById(R.id.btnLaunchExplorer).setOnClickListener(v -> sendAction("explorer"));
+        View bLock = findViewById(R.id.btnLock);
+        if (bLock != null) bLock.setOnClickListener(v -> sendAction("lock"));
 
-        findViewById(R.id.btnCopy).setOnClickListener(v -> sendAction("copy"));
-        findViewById(R.id.btnPaste).setOnClickListener(v -> sendAction("paste"));
-        findViewById(R.id.btnUndo).setOnClickListener(v -> sendAction("undo"));
-        findViewById(R.id.btnSelectAll).setOnClickListener(v -> sendAction("select_all"));
+        // Universal Clipboard
+        View bCopyPc = findViewById(R.id.btnCopyFromPc);
+        if (bCopyPc != null) bCopyPc.setOnClickListener(v -> copyFromPc());
+
+        View bPastePc = findViewById(R.id.btnPasteToPc);
+        if (bPastePc != null) bPastePc.setOnClickListener(v -> pasteToPc());
+
+        View bCopy = findViewById(R.id.btnCopy);
+        if (bCopy != null) bCopy.setOnClickListener(v -> sendAction("copy"));
+
+        View bPaste = findViewById(R.id.btnPaste);
+        if (bPaste != null) bPaste.setOnClickListener(v -> sendAction("paste"));
+
+        // Productivity
+        View bSnip = findViewById(R.id.btnSnip);
+        if (bSnip != null) bSnip.setOnClickListener(v -> sendAction("snip"));
+
+        View bMic = findViewById(R.id.btnMicMute);
+        if (bMic != null) bMic.setOnClickListener(v -> sendAction("mic_mute"));
+
+        View bTaskMgr = findViewById(R.id.btnTaskMgr);
+        if (bTaskMgr != null) bTaskMgr.setOnClickListener(v -> sendAction("task_mgr"));
+
+        View bSearch = findViewById(R.id.btnSearch);
+        if (bSearch != null) bSearch.setOnClickListener(v -> sendAction("search"));
+
+        // Windows Navigation
+        View bDesk = findViewById(R.id.btnDesktop);
+        if (bDesk != null) bDesk.setOnClickListener(v -> sendAction("desktop"));
+
+        View bAltTab = findViewById(R.id.btnAltTab);
+        if (bAltTab != null) bAltTab.setOnClickListener(v -> sendAction("alttab"));
+
+        View bTasks = findViewById(R.id.btnTaskView);
+        if (bTasks != null) bTasks.setOnClickListener(v -> sendAction("taskview"));
+
+        View bAction = findViewById(R.id.btnActionCenter);
+        if (bAction != null) bAction.setOnClickListener(v -> sendAction("action_center"));
+
+        View bTerm = findViewById(R.id.btnLaunchTerminal);
+        if (bTerm != null) bTerm.setOnClickListener(v -> sendAction("terminal"));
+
+        View bExp = findViewById(R.id.btnLaunchExplorer);
+        if (bExp != null) bExp.setOnClickListener(v -> sendAction("explorer"));
+
+        View bDeskL = findViewById(R.id.btnVDeskLeft);
+        if (bDeskL != null) bDeskL.setOnClickListener(v -> sendAction("vdesk_left"));
+
+        View bDeskR = findViewById(R.id.btnVDeskRight);
+        if (bDeskR != null) bDeskR.setOnClickListener(v -> sendAction("vdesk_right"));
+
+        // Power Deck
+        View bSleep = findViewById(R.id.btnSleep);
+        if (bSleep != null) bSleep.setOnClickListener(v -> confirmPowerAction("Sleep Laptop", "sleep"));
+
+        View bRestart = findViewById(R.id.btnRestart);
+        if (bRestart != null) bRestart.setOnClickListener(v -> confirmPowerAction("Restart Laptop", "restart"));
+
+        View bShutdown = findViewById(R.id.btnShutdown);
+        if (bShutdown != null) bShutdown.setOnClickListener(v -> confirmPowerAction("Shutdown Laptop", "shutdown"));
+
+        View bUndo = findViewById(R.id.btnUndo);
+        if (bUndo != null) bUndo.setOnClickListener(v -> sendAction("undo"));
     }
 
     private void setupAppLauncher() {
@@ -1027,9 +1160,179 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private final SensorEventListener gyroListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (!isAirMouseActive || event.sensor.getType() != Sensor.TYPE_GYROSCOPE) return;
+            int orient = getResources().getConfiguration().orientation;
+            float rawX, rawY;
+            if (orient == Configuration.ORIENTATION_LANDSCAPE) {
+                rawX = -event.values[2] * 35.0f;
+                rawY = -event.values[1] * 35.0f;
+            } else {
+                rawX = -event.values[2] * 35.0f;
+                rawY = -event.values[0] * 35.0f;
+            }
+            if (Math.abs(rawX) < 1.2f && Math.abs(rawY) < 1.2f) return;
+            sendMouseMove(Math.round(rawX), Math.round(rawY));
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
+
+    private void promptSetPin() {
+        vibrate(20);
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        input.setHint("Enter Windows PIN");
+        new AlertDialog.Builder(this)
+                .setTitle("SET WINDOWS PIN")
+                .setMessage("Your PIN is saved locally on your phone to unlock Windows securely via Biometrics.")
+                .setView(input)
+                .setPositiveButton("SAVE", (d, w) -> {
+                    String pin = input.getText().toString().trim();
+                    if (!pin.isEmpty()) {
+                        getSharedPreferences("prefs", MODE_PRIVATE).edit().putString("win_pin", pin).apply();
+                        Toast.makeText(this, "PIN saved securely", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void triggerBiometricUnlock() {
+        vibrate(25);
+        String pin = getSharedPreferences("prefs", MODE_PRIVATE).getString("win_pin", "");
+        if (pin.isEmpty()) {
+            promptSetPin();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            BiometricPrompt prompt = new BiometricPrompt.Builder(this)
+                    .setTitle("Unlock Windows PC")
+                    .setSubtitle("Confirm fingerprint or face to send PIN")
+                    .setNegativeButton("Cancel", getMainExecutor(), (d, w) -> {})
+                    .build();
+
+            prompt.authenticate(new CancellationSignal(), getMainExecutor(), new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                    super.onAuthenticationSucceeded(result);
+                    vibrate(40);
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("t", "unlock");
+                        obj.put("pin", pin);
+                        btManager.send(obj);
+                        Toast.makeText(MainActivity.this, "Unlocked PC", Toast.LENGTH_SHORT).show();
+                    } catch (Exception ignored) {}
+                }
+
+                @Override
+                public void onAuthenticationFailed() {
+                    super.onAuthenticationFailed();
+                    vibrate(100);
+                    Toast.makeText(MainActivity.this, "Biometric failed", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("t", "unlock");
+                obj.put("pin", pin);
+                btManager.send(obj);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void copyFromPc() {
+        vibrate(25);
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("t", "clip_get");
+            btManager.send(obj);
+            Toast.makeText(this, "Requesting PC Clipboard...", Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {}
+    }
+
+    private void pasteToPc() {
+        vibrate(25);
+        ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cb != null && cb.hasPrimaryClip() && cb.getPrimaryClip().getItemCount() > 0) {
+            CharSequence text = cb.getPrimaryClip().getItemAt(0).getText();
+            if (text != null && text.length() > 0) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("t", "clip_set");
+                    obj.put("text", text.toString());
+                    obj.put("paste", true);
+                    btManager.send(obj);
+                    Toast.makeText(this, "Pasted phone clipboard to PC", Toast.LENGTH_SHORT).show();
+                } catch (Exception ignored) {}
+            } else {
+                Toast.makeText(this, "Phone clipboard is empty", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "Phone clipboard is empty", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void setAndroidClipboard(String text) {
+        ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cb != null) {
+            ClipData clip = ClipData.newPlainText("PC Clipboard", text);
+            cb.setPrimaryClip(clip);
+            Toast.makeText(this, "Copied from PC: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateTelemetryUI(int cpu, int ram, int bat, int ac) {
+        if (tvTelemetry == null) return;
+        StringBuilder sb = new StringBuilder();
+        sb.append("CPU: ").append(cpu).append("% | ");
+        sb.append("RAM: ").append(ram).append("% | ");
+        sb.append("BAT: ").append(bat).append("%");
+        if (ac == 1) {
+            sb.append(" [AC]");
+        }
+        tvTelemetry.setText(sb.toString());
+        tvTelemetry.setVisibility(View.VISIBLE);
+    }
+
+    private void confirmPowerAction(String title, String action) {
+        vibrate(30);
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage("Are you sure you want to " + title.toLowerCase() + " your PC?")
+                .setPositiveButton("YES", (d, w) -> sendAction(action))
+                .setNegativeButton("NO", null)
+                .show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isAirMouseActive && sensorManager != null && gyroSensor != null) {
+            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(gyroListener);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(gyroListener);
+        }
         try {
             iconLoader.shutdownNow();
         } catch (Exception ignored) {}

@@ -62,6 +62,22 @@
                 android:background="@drawable/bg_button_active"
                 android:textColor="@color/bg_black" />
 
+            <TextView
+                android:id="@+id/tvTelemetry"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="CPU: --% | RAM: --% | BAT: --%"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:textColor="@color/text_white"
+                android:background="@drawable/bg_button"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
+
             <View android:layout_width="6dp" android:layout_height="match_parent" />
 
             <View
@@ -230,6 +246,20 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:text="LEFT CLICK"
+                    android:textAllCaps="true"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnAirMouse"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="AIR MOUSE"
                     android:textAllCaps="true"
                     android:textSize="11sp"
                     android:letterSpacing="0.05"
@@ -467,265 +497,376 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 3. ACTIONS TAB -->
-        <LinearLayout
+        <!-- 3. ACTIONS TAB (Macro, Security & Productivity Deck) -->
+        <ScrollView
             android:id="@+id/viewShortcuts"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
+            android:fillViewport="true"
             android:visibility="gone">
 
-            <!-- Row 1: Core System -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="horizontal">
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="12dp">
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnLock"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="LOCK PC"
-                    android:textAllCaps="true"
-                    android:textSize="11sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
+                <!-- Row 1: Biometric & Security -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
 
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnUnlock"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1.2"
+                        android:text="BIOMETRIC UNLOCK"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button_active"
+                        android:textColor="@color/bg_black" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnDesktop"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="SHOW DESKTOP"
-                    android:textAllCaps="true"
-                    android:textSize="11sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
 
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnSetPin"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.8"
+                        android:text="SET PIN"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnAltTab"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="SWITCH APP"
-                    android:textAllCaps="true"
-                    android:textSize="11sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
 
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnScreenOff"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="OFF SCREEN"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnTaskView"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="TASK VIEW"
-                    android:textAllCaps="true"
-                    android:textSize="11sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnLock"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="LOCK PC"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="6dp" />
+
+                <!-- Row 2: Universal Clipboard Sync -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnCopyFromPc"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="COPY FROM PC"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnPasteToPc"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="PASTE TO PC"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnCopy"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="COPY (CTRL+C)"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnPaste"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="PASTE (CTRL+V)"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="6dp" />
+
+                <!-- Row 3: Productivity & Tools -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnSnip"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="SNIP (WIN+S+S)"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnMicMute"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="MUTE MIC"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnTaskMgr"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="TASK MANAGER"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnSearch"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="SEARCH (WIN+S)"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="6dp" />
+
+                <!-- Row 4: Window & Navigation -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnDesktop"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="DESKTOP"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnAltTab"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="SWITCH APP"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnTaskView"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="TASK VIEW"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnActionCenter"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="NOTIFICATIONS"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="6dp" />
+
+                <!-- Row 5: Terminals & Virtual Desktops -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnLaunchTerminal"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="TERMINAL"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnLaunchExplorer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="EXPLORER"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnVDeskLeft"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="PREV DESK"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnVDeskRight"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="NEXT DESK"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="6dp" />
+
+                <!-- Row 6: Power Controls Deck -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnSleep"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="SLEEP PC"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnRestart"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="RESTART"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnShutdown"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="SHUTDOWN"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted" />
+
+                    <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnUndo"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="UNDO (CTRL+Z)"
+                        android:textAllCaps="true"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
             </LinearLayout>
-
-            <View android:layout_width="match_parent" android:layout_height="6dp" />
-
-            <!-- Row 2: Windows Management & Desktops -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnSearch"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="SEARCH (WIN+S)"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnActionCenter"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="NOTIFICATIONS"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnVDeskLeft"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="PREV DESKTOP"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnVDeskRight"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="NEXT DESKTOP"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-            </LinearLayout>
-
-            <View android:layout_width="match_parent" android:layout_height="6dp" />
-
-            <!-- Row 3: Window Resize & Utilities -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnWinMax"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="MAXIMIZE"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnWinMin"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="MINIMIZE"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnLaunchTerminal"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="TERMINAL"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnLaunchBrowser"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="BROWSER"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnLaunchExplorer"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="EXPLORER"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-            </LinearLayout>
-
-            <View android:layout_width="match_parent" android:layout_height="6dp" />
-
-            <!-- Row 4: Clipboard & Edit -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="horizontal">
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnCopy"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="COPY (CTRL+C)"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnPaste"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="PASTE (CTRL+V)"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnUndo"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="UNDO (CTRL+Z)"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-
-                <View android:layout_width="6dp" android:layout_height="match_parent" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btnSelectAll"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="SELECT ALL (CTRL+A)"
-                    android:textAllCaps="true"
-                    android:textSize="10sp"
-                    android:background="@drawable/bg_button"
-                    android:textColor="@color/text_white" />
-            </LinearLayout>
-        </LinearLayout>
+        </ScrollView>
 
         <!-- 4. APPS LAUNCHER TAB -->
         <LinearLayout
