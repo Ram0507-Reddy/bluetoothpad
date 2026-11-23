@@ -631,7 +631,13 @@ def start_server(port: int = 4):
     global proximity_lock_enabled, last_heartbeat_time
     attach_to_user_desktop()
     server_sock = socket.socket(AF_BTH, socket.SOCK_STREAM, BTPROTO_RFCOMM)
-    server_sock.bind(('00:00:00:00:00:00', port))
+    try:
+        server_sock.bind(('00:00:00:00:00:00', port))
+    except OSError as e:
+        if getattr(e, 'winerror', None) == 10048 or "10048" in str(e):
+            print("[*] BluetoothPad Server is already running in background.")
+            sys.exit(0)
+        raise
     server_sock.listen(1)
 
     local_addr, bound_port = server_sock.getsockname()
