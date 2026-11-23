@@ -196,6 +196,38 @@
                 android:paddingEnd="12dp"
                 android:background="@drawable/bg_button"
                 android:textColor="@color/text_muted" />
+
+            <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnTabGamepad"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="GAMEPAD"
+                android:textAllCaps="true"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_muted" />
+
+            <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnTabDisplay"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="DISPLAY"
+                android:textAllCaps="true"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_muted" />
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -1175,5 +1207,303 @@
                 </LinearLayout>
             </LinearLayout>
         </ScrollView>
+
+        <!-- GAMEPAD TAB VIEW -->
+        <LinearLayout
+            android:id="@+id/viewGamepad"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:background="@drawable/bg_card">
+
+            <!-- Shoulder Buttons Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpLT"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="LT"
+                    android:textAllCaps="true"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpLB"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="LB"
+                    android:textAllCaps="true"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="8dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpGyro"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="2"
+                    android:text="GYRO STEER: OFF"
+                    android:textAllCaps="true"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_muted" />
+
+                <View android:layout_width="8dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpRB"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="RB"
+                    android:textAllCaps="true"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpRT"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="RT"
+                    android:textAllCaps="true"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+            </LinearLayout>
+
+            <!-- Main Controller Area: D-Pad (Left), Center (Start/Select), ABXY (Right) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <!-- Left D-Pad (WASD movement) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpUp"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:text="▲\nW"
+                        android:textStyle="bold"
+                        android:textSize="11sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="3dp"
+                        android:layout_marginBottom="3dp">
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpLeft"
+                            android:layout_width="54dp"
+                            android:layout_height="54dp"
+                            android:text="◀\nA"
+                            android:textStyle="bold"
+                            android:textSize="11sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="@color/text_white" />
+
+                        <View android:layout_width="44dp" android:layout_height="54dp" />
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpRight"
+                            android:layout_width="54dp"
+                            android:layout_height="54dp"
+                            android:text="▶\nD"
+                            android:textStyle="bold"
+                            android:textSize="11sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="@color/text_white" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpDown"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:text="▼\nS"
+                        android:textStyle="bold"
+                        android:textSize="11sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <!-- Center: SELECT & START -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpSelect"
+                        android:layout_width="72dp"
+                        android:layout_height="36dp"
+                        android:text="SELECT"
+                        android:textAllCaps="true"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted"
+                        android:layout_marginBottom="6dp" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpStart"
+                        android:layout_width="72dp"
+                        android:layout_height="36dp"
+                        android:text="START"
+                        android:textAllCaps="true"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted" />
+                </LinearLayout>
+
+                <!-- Right Action Buttons (Y, X, B, A) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpY"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:text="Y"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="#F59E0B" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="3dp"
+                        android:layout_marginBottom="3dp">
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpX"
+                            android:layout_width="54dp"
+                            android:layout_height="54dp"
+                            android:text="X"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="#3B82F6" />
+
+                        <View android:layout_width="44dp" android:layout_height="54dp" />
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpB"
+                            android:layout_width="54dp"
+                            android:layout_height="54dp"
+                            android:text="B"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="#EF4444" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpA"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:text="A"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="#10B981" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- DISPLAY TAB VIEW (MIRACAST WIRELESS SECOND DISPLAY) -->
+        <LinearLayout
+            android:id="@+id/viewDisplay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:background="@drawable/bg_card">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/tvDisplayStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="WIRELESS SECOND DISPLAY"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_white" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnToggleStream"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="START STREAM"
+                    android:textAllCaps="true"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:background="@drawable/bg_button_active"
+                    android:textColor="@color/bg_black" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/ivScreenDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:scaleType="fitCenter"
+                android:background="#0A0A0A"
+                android:contentDescription="Live Screen Display" />
+        </LinearLayout>
     </FrameLayout>
 </LinearLayout>

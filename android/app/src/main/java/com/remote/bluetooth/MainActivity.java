@@ -82,9 +82,35 @@ public class MainActivity extends AppCompatActivity {
     private Button btnConnect, btnThemeToggle;
 
     // Tabs
-    private Button btnTabTouchpad, btnTabMedia, btnTabShortcuts, btnTabApps, btnTabKeyboard;
-    private View viewTouchpad, viewMedia, viewShortcuts, viewApps, viewKeyboard;
+    private Button btnTabTouchpad, btnTabMedia, btnTabShortcuts, btnTabApps, btnTabKeyboard, btnTabGamepad, btnTabDisplay;
+    private View viewTouchpad, viewMedia, viewShortcuts, viewApps, viewKeyboard, viewGamepad, viewDisplay;
     private int currentTabId = R.id.btnTabTouchpad;
+
+    // Gamepad Views & State
+    private Button btnGpLT, btnGpLB, btnGpRT, btnGpRB, btnGpGyro;
+    private Button btnGpUp, btnGpDown, btnGpLeft, btnGpRight;
+    private Button btnGpSelect, btnGpStart;
+    private Button btnGpA, btnGpB, btnGpX, btnGpY;
+    private boolean isGpGyroSteerActive = false;
+
+    // Display Streaming
+    private Button btnToggleStream;
+    private ImageView ivScreenDisplay;
+    private boolean isStreamingDisplay = false;
+    private final Handler streamHandler = new Handler(Looper.getMainLooper());
+    private final Runnable streamRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (btManager.isConnected() && isStreamingDisplay) {
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("t", "screen");
+                    btManager.send(obj);
+                } catch (Exception ignored) {}
+                streamHandler.postDelayed(this, 300);
+            }
+        }
+    };
 
     // Touchpad Views
     private View touchpadSurface, scrollSurface;
@@ -205,12 +231,38 @@ public class MainActivity extends AppCompatActivity {
         btnTabShortcuts = findViewById(R.id.btnTabShortcuts);
         btnTabApps = findViewById(R.id.btnTabApps);
         btnTabKeyboard = findViewById(R.id.btnTabKeyboard);
+        btnTabGamepad = findViewById(R.id.btnTabGamepad);
+        btnTabDisplay = findViewById(R.id.btnTabDisplay);
 
         viewTouchpad = findViewById(R.id.viewTouchpad);
         viewMedia = findViewById(R.id.viewMedia);
         viewShortcuts = findViewById(R.id.viewShortcuts);
         viewApps = findViewById(R.id.viewApps);
         viewKeyboard = findViewById(R.id.viewKeyboard);
+        viewGamepad = findViewById(R.id.viewGamepad);
+        viewDisplay = findViewById(R.id.viewDisplay);
+
+        btnGpLT = findViewById(R.id.btnGpLT);
+        btnGpLB = findViewById(R.id.btnGpLB);
+        btnGpRT = findViewById(R.id.btnGpRT);
+        btnGpRB = findViewById(R.id.btnGpRB);
+        btnGpGyro = findViewById(R.id.btnGpGyro);
+        btnGpUp = findViewById(R.id.btnGpUp);
+        btnGpDown = findViewById(R.id.btnGpDown);
+        btnGpLeft = findViewById(R.id.btnGpLeft);
+        btnGpRight = findViewById(R.id.btnGpRight);
+        btnGpSelect = findViewById(R.id.btnGpSelect);
+        btnGpStart = findViewById(R.id.btnGpStart);
+        btnGpA = findViewById(R.id.btnGpA);
+        btnGpB = findViewById(R.id.btnGpB);
+        btnGpX = findViewById(R.id.btnGpX);
+        btnGpY = findViewById(R.id.btnGpY);
+
+        btnToggleStream = findViewById(R.id.btnToggleStream);
+        ivScreenDisplay = findViewById(R.id.ivScreenDisplay);
+
+        setupGamepadControls();
+        setupDisplayStream();
 
         touchpadSurface = findViewById(R.id.touchpadSurface);
         scrollSurface = findViewById(R.id.scrollSurface);
@@ -322,6 +374,17 @@ public class MainActivity extends AppCompatActivity {
                 } else if ("clip_data".equals(t)) {
                     String text = obj.optString("text", "");
                     setAndroidClipboard(text);
+                } else if ("screen_frame".equals(t)) {
+                    String base64Img = obj.optString("img", "");
+                    if (!base64Img.isEmpty() && ivScreenDisplay != null) {
+                        try {
+                            byte[] decoded = Base64.decode(base64Img, Base64.DEFAULT);
+                            Bitmap bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
+                            if (bitmap != null) {
+                                ivScreenDisplay.setImageBitmap(bitmap);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                 }
             }
         } catch (Exception ignored) {
@@ -526,6 +589,8 @@ public class MainActivity extends AppCompatActivity {
         btnTabShortcuts.setOnClickListener(tabListener);
         btnTabApps.setOnClickListener(tabListener);
         btnTabKeyboard.setOnClickListener(tabListener);
+        btnTabGamepad.setOnClickListener(tabListener);
+        btnTabDisplay.setOnClickListener(tabListener);
     }
 
     private void switchTab(int id) {
@@ -543,12 +608,16 @@ public class MainActivity extends AppCompatActivity {
         viewShortcuts.setVisibility(id == R.id.btnTabShortcuts ? View.VISIBLE : View.GONE);
         viewApps.setVisibility(id == R.id.btnTabApps ? View.VISIBLE : View.GONE);
         viewKeyboard.setVisibility(id == R.id.btnTabKeyboard ? View.VISIBLE : View.GONE);
+        viewGamepad.setVisibility(id == R.id.btnTabGamepad ? View.VISIBLE : View.GONE);
+        viewDisplay.setVisibility(id == R.id.btnTabDisplay ? View.VISIBLE : View.GONE);
 
         applyTabStyle(btnTabTouchpad, id == R.id.btnTabTouchpad);
         applyTabStyle(btnTabMedia, id == R.id.btnTabMedia);
         applyTabStyle(btnTabShortcuts, id == R.id.btnTabShortcuts);
         applyTabStyle(btnTabApps, id == R.id.btnTabApps);
         applyTabStyle(btnTabKeyboard, id == R.id.btnTabKeyboard);
+        applyTabStyle(btnTabGamepad, id == R.id.btnTabGamepad);
+        applyTabStyle(btnTabDisplay, id == R.id.btnTabDisplay);
     }
 
     private void applyTabStyle(Button btn, boolean active) {
@@ -1283,6 +1352,80 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnKeyRight).setOnClickListener(v -> sendKey("right"));
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupGamepadButton(Button btn, final String code) {
+        if (btn == null) return;
+        btn.setOnTouchListener((v, event) -> {
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                sendGamepadEvent(code, "down");
+                return true;
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                sendGamepadEvent(code, "up");
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private void sendGamepadEvent(String btn, String state) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("t", "gp");
+            obj.put("btn", btn);
+            obj.put("state", state);
+            btManager.send(obj);
+        } catch (Exception ignored) {}
+    }
+
+    private void setupGamepadControls() {
+        setupGamepadButton(btnGpA, "A");
+        setupGamepadButton(btnGpB, "B");
+        setupGamepadButton(btnGpX, "X");
+        setupGamepadButton(btnGpY, "Y");
+
+        setupGamepadButton(btnGpUp, "UP");
+        setupGamepadButton(btnGpDown, "DOWN");
+        setupGamepadButton(btnGpLeft, "LEFT");
+        setupGamepadButton(btnGpRight, "RIGHT");
+
+        setupGamepadButton(btnGpLB, "LB");
+        setupGamepadButton(btnGpLT, "LT");
+        setupGamepadButton(btnGpRB, "RB");
+        setupGamepadButton(btnGpRT, "RT");
+
+        setupGamepadButton(btnGpSelect, "SELECT");
+        setupGamepadButton(btnGpStart, "START");
+
+        if (btnGpGyro != null) {
+            btnGpGyro.setOnClickListener(v -> {
+                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                isGpGyroSteerActive = !isGpGyroSteerActive;
+                btnGpGyro.setText(isGpGyroSteerActive ? "GYRO STEER: ON" : "GYRO STEER: OFF");
+                btnGpGyro.setTextColor(isGpGyroSteerActive ? Color.parseColor("#10B981") : Color.parseColor("#8A8A8E"));
+            });
+        }
+    }
+
+    private void setupDisplayStream() {
+        if (btnToggleStream == null) return;
+        btnToggleStream.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            if (!btManager.isConnected()) {
+                Toast.makeText(this, "Connect to laptop first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            isStreamingDisplay = !isStreamingDisplay;
+            btnToggleStream.setText(isStreamingDisplay ? "STOP STREAM" : "START STREAM");
+            if (isStreamingDisplay) {
+                streamHandler.post(streamRunnable);
+            } else {
+                streamHandler.removeCallbacks(streamRunnable);
+            }
+        });
+    }
+
     private void sendMouseMove(int dx, int dy) {
         btManager.sendBinaryMouseMove(dx, dy);
     }
@@ -1415,9 +1558,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private final SensorEventListener gyroListener=new SensorEventListener(){@Override public void onSensorChanged(SensorEvent event){if(!isAirMouseActive||event.sensor.getType()!=Sensor.TYPE_GYROSCOPE)return;int orient=getResources().getConfiguration().orientation;float rawX,rawY;if(orient==Configuration.ORIENTATION_LANDSCAPE){rawX=-event.values[2]*35.0f;rawY=-event.values[1]*35.0f;}else{rawX=-event.values[2]*35.0f;rawY=-event.values[0]*35.0f;}if(Math.abs(rawX)<1.2f&&Math.abs(rawY)<1.2f)return;sendMouseMove(Math.round(rawX),Math.round(rawY));}
+    private final SensorEventListener gyroListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE) return;
+            if (isGpGyroSteerActive) {
+                float steer = -event.values[2] * 20.0f;
+                if (Math.abs(steer) > 1.0f) {
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("t", "gp_gyro");
+                        obj.put("steer", Math.round(steer));
+                        btManager.send(obj);
+                    } catch (Exception ignored) {}
+                }
+                return;
+            }
+            if (!isAirMouseActive) return;
+            int orient = getResources().getConfiguration().orientation;
+            float rawX, rawY;
+            if (orient == Configuration.ORIENTATION_LANDSCAPE) {
+                rawX = -event.values[2] * 35.0f;
+                rawY = -event.values[1] * 35.0f;
+            } else {
+                rawX = -event.values[2] * 35.0f;
+                rawY = -event.values[0] * 35.0f;
+            }
+            if (Math.abs(rawX) < 1.2f && Math.abs(rawY) < 1.2f) return;
+            sendMouseMove(Math.round(rawX), Math.round(rawY));
+        }
 
-    @Override public void onAccuracyChanged(Sensor sensor,int accuracy){}};
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
 
     private void promptSetPin() {
         vibrate(20);

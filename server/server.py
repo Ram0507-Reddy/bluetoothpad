@@ -13,11 +13,14 @@ import os
 import sys
 import time
 import json
+import io
+import base64
 import struct
 import socket
 import ctypes
 import threading
 import subprocess
+from PIL import ImageGrab
 from ctypes import wintypes
 
 # Attach immediately to interactive Windows desktop before any other initializations
@@ -78,6 +81,13 @@ VK_CODES = {
     "lalt": (0xA4, False),
     "lshift": (0xA0, False),
     "d": (0x44, False),
+    "w": (0x57, False),
+    "a": (0x41, False),
+    "s": (0x53, False),
+    "q": (0x51, False),
+    "e": (0x45, False),
+    "r": (0x52, False),
+    "f": (0x46, False),
 }
 
 # 64-bit SendInput Structures (sizeof(INPUT) == 40)
@@ -638,6 +648,75 @@ def handle_command(cmd: dict, client_sock=None):
             else:
                 consecutive_rssi_drops = 0
         return None
+
+    elif t == "screen":
+        try:
+            attach_to_user_desktop()
+            img = ImageGrab.grab()
+            img.thumbnail((480, 270))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=55)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            return {"t": "screen_frame", "img": b64}
+        except Exception as e:
+            return {"t": "screen_frame", "err": str(e)}
+
+    elif t == "gp":
+        # Gamepad Input Handler
+        btn = cmd.get("btn", "").upper()
+        state = cmd.get("state", "down")
+        is_down = (state == "down")
+
+        # Map Gamepad to keys & mouse buttons
+        gp_key_map = {
+            "UP": "w", "DOWN": "s", "LEFT": "a", "RIGHT": "d",
+            "A": "space", "B": "esc", "X": "r", "Y": "e",
+            "LB": "q", "RB": "f",
+            "START": "enter", "SELECT": "tab"
+        }
+
+        if btn in gp_key_map:
+            key_name = gp_key_map[btn]
+            vk, is_ext = VK_CODES.get(key_name, (0, False))
+            if vk != 0:
+                flag = KEYEVENTF_KEYDOWN if is_down else KEYEVENTF_KEYUP
+                if is_ext: flag |= KEYEVENTF_EXTENDEDKEY
+                inp = INPUT(type=1, ki=KEYBDINPUT(vk, 0, flag, 0, 0))
+                user32.SendInput(1, ctypes.byref(inp), 40)
+
+        elif btn == "LT":
+            flag = MOUSEEVENTF_RIGHTDOWN if is_down else MOUSEEVENTF_RIGHTUP
+            inp = INPUT(type=0, mi=MOUSEINPUT(0, 0, 0, flag, 0, 0))
+            user32.SendInput(1, ctypes.byref(inp), 40)
+
+        elif btn == "RT":
+            flag = MOUSEEVENTF_LEFTDOWN if is_down else MOUSEEVENTF_LEFTUP
+            inp = INPUT(type=0, mi=MOUSEINPUT(0, 0, 0, flag, 0, 0))
+            user32.SendInput(1, ctypes.byref(inp), 40)
+        return None
+
+    elif t == "gp_gyro":
+        steer = int(cmd.get("steer", 0))
+        # Smooth horizontal mouse steering in racing games
+        send_mouse_move(steer, 0)
+        return None
+
+    elif t == "unlock":
+        # Remote Biometric Windows Hello Unlock
+        pin = cmd.get("pin", "")
+        attach_to_user_desktop()
+        # Wake up lockscreen
+        press_key(VK_CODES["space"][0])
+        time.sleep(0.15)
+        press_key(VK_CODES["enter"][0])
+        time.sleep(0.2)
+        if pin:
+            for ch in pin:
+                send_unicode_char(ch)
+                time.sleep(0.03)
+            time.sleep(0.05)
+            press_key(VK_CODES["enter"][0])
+        return {"t": "unlock_ack", "status": "ok"}
 
     elif t == "ping":
         return {"t": "pong"}
