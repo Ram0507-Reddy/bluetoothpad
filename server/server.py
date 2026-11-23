@@ -476,6 +476,20 @@ def send_unicode_char(char: str):
 proximity_lock_enabled = False
 last_heartbeat_time = time.time()
 consecutive_rssi_drops = 0
+_active_wasd = {"w": False, "s": False, "a": False, "d": False}
+
+def set_wasd_key(key_char, press):
+    global _active_wasd
+    if _active_wasd.get(key_char) == press:
+        return
+    _active_wasd[key_char] = press
+    vk, is_ext = VK_CODES.get(key_char, (0, False))
+    if vk != 0:
+        attach_to_user_desktop()
+        flag = KEYEVENTF_KEYDOWN if press else KEYEVENTF_KEYUP
+        if is_ext: flag |= KEYEVENTF_EXTENDEDKEY
+        inp = INPUT(type=1, ki=KEYBDINPUT(vk, 0, flag, 0, 0))
+        user32.SendInput(1, ctypes.byref(inp), 40)
 
 def handle_command(cmd: dict, client_sock=None):
     global proximity_lock_enabled, last_heartbeat_time
@@ -660,6 +674,47 @@ def handle_command(cmd: dict, client_sock=None):
             return {"t": "screen_frame", "img": b64}
         except Exception as e:
             return {"t": "screen_frame", "err": str(e)}
+
+    elif t == "screen_touch":
+        # Interactive Touchscreen on Second Display Mirror
+        act = cmd.get("act", "click")
+        rx = float(cmd.get("x", 0.0))
+        ry = float(cmd.get("y", 0.0))
+        attach_to_user_desktop()
+        sw = user32.GetSystemMetrics(0)
+        sh = user32.GetSystemMetrics(1)
+        px = max(0, min(sw - 1, int(rx * sw)))
+        py = max(0, min(sh - 1, int(ry * sh)))
+
+        user32.SetCursorPos(px, py)
+        if act == "down":
+            inp = INPUT(type=0, mi=MOUSEINPUT(0, 0, 0, MOUSEEVENTF_LEFTDOWN, 0, 0))
+            user32.SendInput(1, ctypes.byref(inp), 40)
+        elif act == "up":
+            inp = INPUT(type=0, mi=MOUSEINPUT(0, 0, 0, MOUSEEVENTF_LEFTUP, 0, 0))
+            user32.SendInput(1, ctypes.byref(inp), 40)
+        elif act == "click":
+            send_mouse_click("l")
+        elif act == "rclick":
+            send_mouse_click("r")
+        elif act == "dclick":
+            send_mouse_click("d")
+        return None
+
+    elif t == "gp_stick":
+        # Virtual Analog Thumbstick
+        sx = float(cmd.get("x", 0.0))
+        sy = float(cmd.get("y", 0.0))
+        mode = cmd.get("mode", "wasd")
+        if mode == "mouse":
+            if abs(sx) > 0.08 or abs(sy) > 0.08:
+                send_mouse_move(int(sx * 14), int(sy * 14))
+        else:
+            set_wasd_key("w", sy < -0.28)
+            set_wasd_key("s", sy > 0.28)
+            set_wasd_key("a", sx < -0.28)
+            set_wasd_key("d", sx > 0.28)
+        return None
 
     elif t == "gp":
         # Gamepad Input Handler

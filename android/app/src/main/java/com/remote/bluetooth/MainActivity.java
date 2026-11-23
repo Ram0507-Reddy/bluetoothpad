@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -92,6 +93,22 @@ public class MainActivity extends AppCompatActivity {
     private Button btnGpSelect, btnGpStart;
     private Button btnGpA, btnGpB, btnGpX, btnGpY;
     private boolean isGpGyroSteerActive = false;
+    private JoystickView joystickView;
+    private Button btnGpStickMode;
+    private String gpStickMode = "wasd";
+    private Vibrator vibrator;
+
+    private void performHaptic() {
+        if (vibrator != null) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    vibrator.vibrate(18);
+                }
+            } catch (Exception ignored) {}
+        }
+    }
 
     // Display Streaming
     private Button btnToggleStream;
@@ -107,7 +124,6 @@ public class MainActivity extends AppCompatActivity {
                     obj.put("t", "screen");
                     btManager.send(obj);
                 } catch (Exception ignored) {}
-                streamHandler.postDelayed(this, 300);
             }
         }
     };
@@ -258,6 +274,10 @@ public class MainActivity extends AppCompatActivity {
         btnGpX = findViewById(R.id.btnGpX);
         btnGpY = findViewById(R.id.btnGpY);
 
+        joystickView = findViewById(R.id.joystickView);
+        btnGpStickMode = findViewById(R.id.btnGpStickMode);
+        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
         btnToggleStream = findViewById(R.id.btnToggleStream);
         ivScreenDisplay = findViewById(R.id.ivScreenDisplay);
 
@@ -382,6 +402,10 @@ public class MainActivity extends AppCompatActivity {
                             Bitmap bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
                             if (bitmap != null) {
                                 ivScreenDisplay.setImageBitmap(bitmap);
+                                if (isStreamingDisplay) {
+                                    streamHandler.removeCallbacks(streamRunnable);
+                                    streamHandler.postDelayed(streamRunnable, 45);
+                                }
                             }
                         } catch (Exception ignored) {}
                     }
@@ -1359,6 +1383,7 @@ public class MainActivity extends AppCompatActivity {
             int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN) {
                 v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                performHaptic();
                 sendGamepadEvent(code, "down");
                 return true;
             } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
@@ -1400,18 +1425,47 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnGpGyro != null) {
             btnGpGyro.setOnClickListener(v -> {
-                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                performHaptic();
                 isGpGyroSteerActive = !isGpGyroSteerActive;
                 btnGpGyro.setText(isGpGyroSteerActive ? "GYRO STEER: ON" : "GYRO STEER: OFF");
                 btnGpGyro.setTextColor(isGpGyroSteerActive ? Color.parseColor("#10B981") : Color.parseColor("#8A8A8E"));
             });
         }
+
+        if (btnGpStickMode != null) {
+            btnGpStickMode.setOnClickListener(v -> {
+                performHaptic();
+                if ("wasd".equals(gpStickMode)) {
+                    gpStickMode = "mouse";
+                    btnGpStickMode.setText("STICK: AIM");
+                } else {
+                    gpStickMode = "wasd";
+                    btnGpStickMode.setText("STICK: WASD");
+                }
+            });
+        }
+
+        if (joystickView != null) {
+            joystickView.setOnJoystickMoveListener((xPercent, yPercent) -> {
+                if (btManager.isConnected()) {
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("t", "gp_stick");
+                        obj.put("x", (double) xPercent);
+                        obj.put("y", (double) yPercent);
+                        obj.put("mode", gpStickMode);
+                        btManager.send(obj);
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void setupDisplayStream() {
         if (btnToggleStream == null) return;
         btnToggleStream.setOnClickListener(v -> {
-            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            performHaptic();
             if (!btManager.isConnected()) {
                 Toast.makeText(this, "Connect to laptop first", Toast.LENGTH_SHORT).show();
                 return;
@@ -1424,6 +1478,62 @@ public class MainActivity extends AppCompatActivity {
                 streamHandler.removeCallbacks(streamRunnable);
             }
         });
+
+        if (ivScreenDisplay != null) {
+            ivScreenDisplay.setOnTouchListener(new View.OnTouchListener() {
+                private float downX, downY;
+                private long downTime;
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (!btManager.isConnected() || !isStreamingDisplay) return false;
+                    int action = event.getActionMasked();
+                    float x = event.getX();
+                    float y = event.getY();
+                    int w = v.getWidth();
+                    int h = v.getHeight();
+                    if (w <= 0 || h <= 0) return false;
+
+                    float normX = Math.max(0f, Math.min(1f, x / w));
+                    float normY = Math.max(0f, Math.min(1f, y / h));
+
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("t", "screen_touch");
+                        obj.put("x", (double) normX);
+                        obj.put("y", (double) normY);
+
+                        switch (action) {
+                            case MotionEvent.ACTION_DOWN:
+                                downX = x;
+                                downY = y;
+                                downTime = System.currentTimeMillis();
+                                performHaptic();
+                                obj.put("act", "down");
+                                btManager.send(obj);
+                                break;
+                            case MotionEvent.ACTION_MOVE:
+                                obj.put("act", "move");
+                                btManager.send(obj);
+                                break;
+                            case MotionEvent.ACTION_UP:
+                                long duration = System.currentTimeMillis() - downTime;
+                                float dist = (float) Math.hypot(x - downX, y - downY);
+                                if (dist < 25 && duration > 500) {
+                                    performHaptic();
+                                    obj.put("act", "rclick");
+                                } else if (dist < 25) {
+                                    obj.put("act", "click");
+                                } else {
+                                    obj.put("act", "up");
+                                }
+                                btManager.send(obj);
+                                break;
+                        }
+                    } catch (Exception ignored) {}
+                    return true;
+                }
+            });
+        }
     }
 
     private void sendMouseMove(int dx, int dy) {

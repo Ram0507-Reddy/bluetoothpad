@@ -161,6 +161,36 @@
                 android:background="@drawable/bg_button"
                 android:textColor="@color/text_muted" />
 
+            <View android:layout_width="3dp" android:layout_height="match_parent" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnTabGamepad"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="GAMEPAD"
+                android:textAllCaps="true"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_muted" />
+
+            <View android:layout_width="3dp" android:layout_height="match_parent" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnTabDisplay"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="DISPLAY"
+                android:textAllCaps="true"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:background="@drawable/bg_button"
+                android:textColor="@color/text_muted" />
+
             <View android:layout_width="6dp" android:layout_height="match_parent" />
 
             <View
@@ -1180,6 +1210,316 @@
                     android:background="@drawable/bg_button"
                     android:textColor="@color/text_white" />
             </LinearLayout>
+        </LinearLayout>
+
+        <!-- GAMEPAD TAB VIEW (LANDSCAPE FULL CONSOLE DECK) -->
+        <LinearLayout
+            android:id="@+id/viewGamepad"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="6dp"
+            android:visibility="gone"
+            android:background="@drawable/bg_card">
+
+            <!-- Top Shoulder & Function Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:orientation="horizontal"
+                android:layout_marginBottom="6dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpLT"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="LT"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpLB"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="LB"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpGyro"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1.5"
+                    android:text="GYRO: OFF"
+                    android:textStyle="bold"
+                    android:textSize="9sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_muted" />
+
+                <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpStickMode"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1.5"
+                    android:text="STICK: WASD"
+                    android:textStyle="bold"
+                    android:textSize="9sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="6dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpRB"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="RB"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+
+                <View android:layout_width="4dp" android:layout_height="match_parent" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGpRT"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="RT"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_button"
+                    android:textColor="@color/text_white" />
+            </LinearLayout>
+
+            <!-- Main Joystick, D-Pad, Center, ABXY Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Left: 360 Analog Thumbstick -->
+                <com.remote.bluetooth.JoystickView
+                    android:id="@+id/joystickView"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- D-Pad (Up, Down, Left, Right) -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpUp"
+                        android:layout_width="46dp"
+                        android:layout_height="44dp"
+                        android:text="▲\nW"
+                        android:textStyle="bold"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="2dp">
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpLeft"
+                            android:layout_width="46dp"
+                            android:layout_height="44dp"
+                            android:text="◀\nA"
+                            android:textStyle="bold"
+                            android:textSize="10sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="@color/text_white" />
+
+                        <View android:layout_width="32dp" android:layout_height="44dp" />
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpRight"
+                            android:layout_width="46dp"
+                            android:layout_height="44dp"
+                            android:text="▶\nD"
+                            android:textStyle="bold"
+                            android:textSize="10sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="@color/text_white" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpDown"
+                        android:layout_width="46dp"
+                        android:layout_height="44dp"
+                        android:text="▼\nS"
+                        android:textStyle="bold"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white" />
+                </LinearLayout>
+
+                <!-- Center: Select / Start -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpSelect"
+                        android:layout_width="72dp"
+                        android:layout_height="34dp"
+                        android:text="SELECT"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted"
+                        android:layout_marginBottom="6dp" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpStart"
+                        android:layout_width="72dp"
+                        android:layout_height="34dp"
+                        android:text="START"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_muted" />
+                </LinearLayout>
+
+                <!-- Right: ABXY Diamond Layout -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="16dp">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpY"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:text="Y"
+                        android:textStyle="bold"
+                        android:textSize="13sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="#F59E0B" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="2dp">
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpX"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:text="X"
+                            android:textStyle="bold"
+                            android:textSize="13sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="#3B82F6" />
+
+                        <View android:layout_width="32dp" android:layout_height="46dp" />
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/btnGpB"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:text="B"
+                            android:textStyle="bold"
+                            android:textSize="13sp"
+                            android:background="@drawable/bg_button"
+                            android:textColor="#EF4444" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpA"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:text="A"
+                        android:textStyle="bold"
+                        android:textSize="13sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="#10B981" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- DISPLAY TAB VIEW (MIRACAST WIRELESS SECOND DISPLAY) -->
+        <LinearLayout
+            android:id="@+id/viewDisplay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="4dp"
+            android:visibility="gone"
+            android:background="@drawable/bg_card">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tvDisplayStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="MIRACAST SECOND DISPLAY (TOUCH TO CONTROL PC)"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_white" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnToggleStream"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:text="START STREAM"
+                    android:textAllCaps="true"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:background="@drawable/bg_button_active"
+                    android:textColor="@color/bg_black" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/ivScreenDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:scaleType="fitCenter"
+                android:background="#0A0A0A"
+                android:contentDescription="Live Screen Display" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

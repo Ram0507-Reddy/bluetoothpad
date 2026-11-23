@@ -1294,6 +1294,51 @@
                     android:textColor="@color/text_white" />
             </LinearLayout>
 
+            <!-- 360 Analog Thumbstick & Mode Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <com.remote.bluetooth.JoystickView
+                    android:id="@+id/joystickView"
+                    android:layout_width="110dp"
+                    android:layout_height="110dp"
+                    android:layout_marginStart="8dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btnGpStickMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="36dp"
+                        android:text="STICK: WASD"
+                        android:textAllCaps="true"
+                        android:textStyle="bold"
+                        android:textSize="10sp"
+                        android:background="@drawable/bg_button"
+                        android:textColor="@color/text_white"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="360° ANALOG THUMBSTICK"
+                        android:textSize="9sp"
+                        android:fontFamily="monospace"
+                        android:textColor="@color/text_muted" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Main Controller Area: D-Pad (Left), Center (Start/Select), ABXY (Right) -->
             <LinearLayout
                 android:layout_width="match_parent"
