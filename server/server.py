@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import json
+import struct
 import socket
 import ctypes
 import threading
@@ -464,6 +465,7 @@ def send_unicode_char(char: str):
 
 proximity_lock_enabled = False
 last_heartbeat_time = time.time()
+consecutive_rssi_drops = 0
 
 def handle_command(cmd: dict, client_sock=None):
     global proximity_lock_enabled, last_heartbeat_time
@@ -619,7 +621,22 @@ def handle_command(cmd: dict, client_sock=None):
         return {"t": "proximity_ack", "enabled": proximity_lock_enabled}
 
     elif t == "hb":
+        global consecutive_rssi_drops
         last_heartbeat_time = time.time()
+        rssi = cmd.get("rssi")
+        if rssi is not None and proximity_lock_enabled:
+            # Hardware RSSI Geofence: -82 dBm signals user is 5-8+ meters away
+            if rssi < -82:
+                consecutive_rssi_drops += 1
+                if consecutive_rssi_drops >= 2:
+                    print(f"[PROXIMITY GEOFENCE] Signal dropped to {rssi} dBm (< -82 dBm) -> Auto-Locking workstation!")
+                    sys.stdout.flush()
+                    attach_to_user_desktop()
+                    user32.LockWorkStation()
+                    proximity_lock_enabled = False
+                    consecutive_rssi_drops = 0
+            else:
+                consecutive_rssi_drops = 0
         return None
 
     elif t == "ping":
@@ -627,9 +644,119 @@ def handle_command(cmd: dict, client_sock=None):
 
     return None
 
-def start_server(port: int = 4):
+def handle_client_session(client_sock, client_info, local_addr):
+    global proximity_lock_enabled, last_heartbeat_time
+    print(f"[+] Phone connected: {client_info}")
+    sys.stdout.flush()
+
+    attach_to_user_desktop()
+    last_heartbeat_time = time.time()
+
+    # 7.5ms Interval Tuning / Low-Latency socket buffers
+    try:
+        client_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
+        client_sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
+    except Exception:
+        pass
+
+    app_names = sorted(list(INSTALLED_APPS.keys()))
+    welcome = json.dumps({"status": "connected", "mac": local_addr, "apps": app_names}) + "\n"
+    try:
+        client_sock.sendall(welcome.encode("utf-8"))
+    except Exception as e:
+        print(f"[!] Welcome send error: {e}")
+        return
+
+    stop_telemetry = threading.Event()
+    def telemetry_worker():
+        global proximity_lock_enabled, last_heartbeat_time
+        while not stop_telemetry.is_set():
+            try:
+                # Check proximity heartbeat
+                if proximity_lock_enabled and (time.time() - last_heartbeat_time > 6.0):
+                    print("[PROXIMITY] Heartbeat lost (>6s) -> Locking workstation!")
+                    sys.stdout.flush()
+                    attach_to_user_desktop()
+                    user32.LockWorkStation()
+                    proximity_lock_enabled = False
+
+                telem = get_telemetry()
+                msg = (json.dumps(telem) + "\n").encode("utf-8")
+                client_sock.sendall(msg)
+            except Exception:
+                break
+            stop_telemetry.wait(2.0)
+
+    t_thread = threading.Thread(target=telemetry_worker, daemon=True)
+    t_thread.start()
+
+    buffer = ""
+    raw_buffer = bytearray()
+    while True:
+        try:
+            chunk = client_sock.recv(1024)
+            if not chunk:
+                print("[-] Phone disconnected.")
+                sys.stdout.flush()
+                if proximity_lock_enabled:
+                    print("[PROXIMITY] Bluetooth disconnected while Auto-Lock active -> Locking workstation!")
+                    sys.stdout.flush()
+                    attach_to_user_desktop()
+                    user32.LockWorkStation()
+                    proximity_lock_enabled = False
+                break
+
+            raw_buffer.extend(chunk)
+
+            # Direct Low-Latency 5-byte Binary Motion Packets:
+            # Format: [0x01, dx_high, dx_low, dy_high, dy_low]
+            while len(raw_buffer) >= 5 and raw_buffer[0] == 1:
+                dx, dy = struct.unpack('>hh', raw_buffer[1:5])
+                send_mouse_move(dx, dy)
+                del raw_buffer[:5]
+
+            if not raw_buffer:
+                continue
+
+            # Process text/JSON payload lines
+            idx = raw_buffer.find(b"\n")
+            while idx != -1:
+                line_bytes = raw_buffer[:idx]
+                del raw_buffer[:idx + 1]
+                idx = raw_buffer.find(b"\n")
+
+                line = line_bytes.decode("utf-8", errors="ignore").strip()
+                if not line:
+                    continue
+                try:
+                    cmd = json.loads(line)
+                    if cmd.get("t") not in ["m", "s", "hb"]:
+                        print(f"[CMD] {cmd}")
+                        sys.stdout.flush()
+                    resp = handle_command(cmd, client_sock)
+                    if resp:
+                        client_sock.sendall((json.dumps(resp) + "\n").encode("utf-8"))
+                except json.JSONDecodeError:
+                    pass
+                except Exception as e:
+                    print(f"[!] Command execution error: {e}")
+                    sys.stdout.flush()
+
+        except Exception as e:
+            print(f"[!] Session loop error: {e}")
+            break
+
+    stop_telemetry.set()
+    try:
+        client_sock.close()
+    except Exception:
+        pass
+
+def start_server(port: int = 4, tcp_port: int = 8888):
     global proximity_lock_enabled, last_heartbeat_time
     attach_to_user_desktop()
+
+    # 1. Bluetooth RFCOMM Server
     server_sock = socket.socket(AF_BTH, socket.SOCK_STREAM, BTPROTO_RFCOMM)
     try:
         server_sock.bind(('00:00:00:00:00:00', port))
@@ -642,89 +769,41 @@ def start_server(port: int = 4):
 
     local_addr, bound_port = server_sock.getsockname()
     print("=" * 60)
-    print(" 🚀 BLUETOOTH LAPTOP REMOTE SERVER v4")
+    print(" 🚀 BLUETOOTH LAPTOP REMOTE SERVER v5")
     print(f" [+] Local Bluetooth MAC : {local_addr}")
     print(f" [+] RFCOMM Channel     : {bound_port}")
+    print(f" [+] BNEP TCP Tunnel    : port {tcp_port} (Active)")
+    print(f" [+] Swift Pair Beacon  : Compatible (0x0006 Adv)")
     print(f" [+] Indexed Apps       : {len(INSTALLED_APPS)} applications ready")
     print("=" * 60)
 
     register_sdp_service(bound_port)
 
+    # 2. BNEP / Bluetooth PAN TCP Listener (TCP/IP over Bluetooth without Wi-Fi)
+    def bnep_tcp_listener():
+        tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            tcp_server.bind(('0.0.0.0', tcp_port))
+            tcp_server.listen(2)
+            print(f"[*] BNEP TCP listener running on 0.0.0.0:{tcp_port}")
+            sys.stdout.flush()
+            while True:
+                client_sock, client_info = tcp_server.accept()
+                t = threading.Thread(target=handle_client_session, args=(client_sock, client_info, local_addr), daemon=True)
+                t.start()
+        except Exception as e:
+            print(f"[!] BNEP TCP listener error: {e}")
+
+    threading.Thread(target=bnep_tcp_listener, daemon=True).start()
+
+    # 3. RFCOMM Listener Loop
     while True:
         print("\n[*] Waiting for phone connection over Bluetooth...")
         sys.stdout.flush()
         try:
             client_sock, client_info = server_sock.accept()
-            print(f"[+] Phone connected: {client_info}")
-            sys.stdout.flush()
-
-            attach_to_user_desktop()
-            last_heartbeat_time = time.time()
-
-            app_names = sorted(list(INSTALLED_APPS.keys()))
-            welcome = json.dumps({"status": "connected", "mac": local_addr, "apps": app_names}) + "\n"
-            client_sock.sendall(welcome.encode("utf-8"))
-
-            stop_telemetry = threading.Event()
-            def telemetry_worker():
-                global proximity_lock_enabled, last_heartbeat_time
-                while not stop_telemetry.is_set():
-                    try:
-                        # Check proximity heartbeat
-                        if proximity_lock_enabled and (time.time() - last_heartbeat_time > 6.0):
-                            print("[PROXIMITY] Heartbeat lost (>6s) -> Locking workstation!")
-                            sys.stdout.flush()
-                            attach_to_user_desktop()
-                            user32.LockWorkStation()
-                            proximity_lock_enabled = False
-
-                        telem = get_telemetry()
-                        msg = (json.dumps(telem) + "\n").encode("utf-8")
-                        client_sock.sendall(msg)
-                    except Exception:
-                        break
-                    stop_telemetry.wait(2.0)
-
-            t_thread = threading.Thread(target=telemetry_worker, daemon=True)
-            t_thread.start()
-
-            buffer = ""
-            while True:
-                data = client_sock.recv(1024)
-                if not data:
-                    print("[-] Phone disconnected.")
-                    sys.stdout.flush()
-                    if proximity_lock_enabled:
-                        print("[PROXIMITY] Bluetooth disconnected while Auto-Lock active -> Locking workstation!")
-                        sys.stdout.flush()
-                        attach_to_user_desktop()
-                        user32.LockWorkStation()
-                        proximity_lock_enabled = False
-                    break
-
-                buffer += data.decode("utf-8", errors="ignore")
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        cmd = json.loads(line)
-                        if cmd.get("t") not in ["m", "s", "hb"]:
-                            print(f"[CMD] {cmd}")
-                            sys.stdout.flush()
-                        resp = handle_command(cmd, client_sock)
-                        if resp:
-                            client_sock.sendall((json.dumps(resp) + "\n").encode("utf-8"))
-                    except json.JSONDecodeError:
-                        pass
-                    except Exception as e:
-                        print(f"[!] Command execution error: {e}")
-                        sys.stdout.flush()
-
-            stop_telemetry.set()
-            client_sock.close()
-
+            handle_client_session(client_sock, client_info, local_addr)
         except KeyboardInterrupt:
             print("\n[!] Stopping server...")
             break

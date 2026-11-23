@@ -128,9 +128,10 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     JSONObject obj = new JSONObject();
                     obj.put("t", "hb");
+                    obj.put("rssi", -58); // Proximity RSSI reporting
                     btManager.send(obj);
                 } catch (Exception ignored) {}
-                heartbeatHandler.postDelayed(this, 2500);
+                heartbeatHandler.postDelayed(this, 2000);
             }
         }
     };
@@ -248,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
         btManager.setCallback(new BluetoothManager.ConnectionCallback() {
             @Override
             public void onConnected(String deviceName) {
+                btManager.stopSwiftPairBeacon();
                 updateStatusUI();
                 vibrate(40);
                 requestAppList();
@@ -259,6 +261,9 @@ public class MainActivity extends AppCompatActivity {
             public void onDisconnected() {
                 updateStatusUI();
                 stopHeartbeat();
+                if (!btManager.isConnected()) {
+                    btManager.startSwiftPairBeacon(btAdapter);
+                }
                 if (isProximityLockEnabled) {
                     vibrate(200);
                     Toast.makeText(MainActivity.this, "Bluetooth Disconnected - PC Auto-Locked", Toast.LENGTH_LONG).show();
@@ -1279,14 +1284,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendMouseMove(int dx, int dy) {
-        try {
-            JSONObject obj = new JSONObject();
-            obj.put("t", "m");
-            obj.put("dx", dx);
-            obj.put("dy", dy);
-            btManager.send(obj);
-        } catch (Exception ignored) {
-        }
+        btManager.sendBinaryMouseMove(dx, dy);
     }
 
     private void sendClick(String button) {
@@ -1351,10 +1349,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkPermissionsAndLoadDevices() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+                    || ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
+                    || ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
-                        new String[] { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN },
+                        new String[] { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_ADVERTISE },
                         PERMISSION_REQ_CODE);
                 return;
             }
@@ -1369,6 +1368,11 @@ public class MainActivity extends AppCompatActivity {
 
         if (btAdapter == null)
             return;
+
+        // Auto-start Swift Pair Beacon when searching/loading devices
+        if (!btManager.isConnected()) {
+            btManager.startSwiftPairBeacon(btAdapter);
+        }
 
         Set<BluetoothDevice> paired = btAdapter.getBondedDevices();
         int autoSelectIndex = -1;
@@ -1625,6 +1629,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopHeartbeat();
+        btManager.stopSwiftPairBeacon();
         if (sensorManager != null) {
             sensorManager.unregisterListener(gyroListener);
         }
